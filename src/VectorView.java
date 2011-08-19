@@ -60,10 +60,10 @@ public class VectorView extends android.opengl.GLSurfaceView
             final short Indices[];
               {
                 final int one = 0x10000;
-                final float BodyThickness = 0.05f;
-                final float HeadThickness = 0.1f;
-                final float HeadLength = 0.1f;
-                final int NrSegments = 6; /* small value for testing */
+                final float BodyThickness = 0.2f;
+                final float HeadThickness = 0.4f;
+                final float HeadLength = 0.4f;
+                final int NrSegments = 12; /* small value for testing */
                 final ArrayList<Vec3f> Points = new ArrayList<Vec3f>();
                 final ArrayList<Vec3f> PointNormals = new ArrayList<Vec3f>();
                 final ArrayList<Integer> Faces = new ArrayList<Integer>();
@@ -256,7 +256,7 @@ public class VectorView extends android.opengl.GLSurfaceView
               (
                 /*light =*/ GL10.GL_LIGHT0,
                 /*pname =*/ GL10.GL_POSITION,
-                /*params =*/ new float[] {0.0f, 0.5f, -0.5f, 1.0f},
+                /*params =*/ new float[] {0.0f, 2.0f, -2.0f, 1.0f},
                 /*offset =*/ 0
               );
             gl.glLightfv
@@ -270,7 +270,7 @@ public class VectorView extends android.opengl.GLSurfaceView
               (
                 /*light =*/ GL10.GL_LIGHT0,
                 /*pname =*/ GL10.GL_SPECULAR,
-                /*params =*/ new float[] {1.0f, 1.0f, 1.0f, 1.0f},
+                /*params =*/ new float[] {0.7f, 0.7f, 0.7f, 1.0f},
                 /*offset =*/ 0
               );
             gl.glTranslatef(0, 0, -3.0f);
@@ -278,14 +278,14 @@ public class VectorView extends android.opengl.GLSurfaceView
             gl.glRotatef(Elev, 1, 0, 0);
             gl.glRotatef(Azi, 0, 0, 1);
             gl.glScalef(2.0f, 2.0f, 2.0f);
-            gl.glFrontFace(GL10.GL_CW);
+            gl.glFrontFace(GL10.GL_CCW);
             gl.glVertexPointer(3, GL10.GL_FIXED, 0, VertexBuffer);
             gl.glNormalPointer(GL10.GL_FIXED, 0, NormalBuffer);
           /* gl.glColor4f(1.0f, 1.0f, 1.0f, 1.0f); */
             gl.glMaterialfv
               (
                 /*face =*/ GL10.GL_FRONT_AND_BACK,
-                /*pname =*/ GL10.GL_DIFFUSE,
+                /*pname =*/ GL10.GL_AMBIENT,
                 /*params =*/ new float[] {0.4f, 0.4f, 0.4f, 1.0f},
                 /*offset =*/ 0
               );
@@ -329,8 +329,6 @@ public class VectorView extends android.opengl.GLSurfaceView
             gl.glClearColor(1.0f, 1.0f, 0.635f, 1.0f);
             gl.glEnable(GL10.GL_CULL_FACE);
             gl.glShadeModel(GL10.GL_SMOOTH);
-              /* GL_FLAT produces discontinuities across triangles making
-                up each face--probably need better normals or texture coordinates */
             gl.glEnable(GL10.GL_LIGHTING);
             gl.glEnable(GL10.GL_LIGHT0);
             gl.glEnable(GL10.GL_DEPTH_TEST);

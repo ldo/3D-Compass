@@ -267,6 +267,9 @@ public class VectorView extends android.opengl.GLSurfaceView
             gl.glClear(GL10.GL_COLOR_BUFFER_BIT | GL10.GL_DEPTH_BUFFER_BIT);
             gl.glMatrixMode(GL10.GL_MODELVIEW);
             gl.glLoadIdentity();
+          /* Note that, by positioning the light _before_ doing all the
+            rotate calls, its position is fixed relative to the phone,
+            not the compass arrow. */
             gl.glLightfv
               (
                 /*light =*/ GL10.GL_LIGHT0,

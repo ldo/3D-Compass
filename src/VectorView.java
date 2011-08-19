@@ -370,8 +370,14 @@ public class VectorView extends android.opengl.GLSurfaceView
       )
       {
         Azi = NewData[0];
+          /* always Earth-horizontal, regardless of orientation of phone */
         Elev = NewData[1];
+          /* always around X-axis of phone, +ve is top-down, -ve is top-up */
         Roll = NewData[2];
+          /* always around Y-axis of phone, +ve is anticlockwise
+            viewed from bottom, -ve is clockwise, until it reaches
+            ±90° when it its starts decreasing in magnitude again, so
+            0° is when phone is horizontal either face-up or face-down */
         requestRender();
       } /*SetData*/
 

@@ -6,23 +6,24 @@ package nz.gen.geek_central.Compass3D;
 import java.util.ArrayList;
 import javax.microedition.khronos.opengles.GL10;
 
-class GraphicsUseful
+class Vec3f
+  /* 3D vectors */
   {
+    public final float x, y, z;
 
-    public static android.graphics.Paint FillWithColor
+    public Vec3f
       (
-        int TheColor
+        float x,
+        float y,
+        float z
       )
-      /* returns a Paint that will fill with a solid colour. */
       {
-        final android.graphics.Paint ThePaint = new android.graphics.Paint();
-        ThePaint.setStyle(android.graphics.Paint.Style.FILL);
-        ThePaint.setColor(TheColor);
-        return
-            ThePaint;
-      } /*FillWithColor*/
+        this.x = x;
+        this.y = y;
+        this.z = z;
+      } /*Vec3f*/
 
-  } /*GraphicsUseful*/
+  } /*Vec3f*/
 
 public class VectorView extends android.opengl.GLSurfaceView
   {

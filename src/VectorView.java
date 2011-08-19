@@ -60,10 +60,11 @@ public class VectorView extends android.opengl.GLSurfaceView
             final short Indices[];
               {
                 final int one = 0x10000;
-                final float BodyThickness = 0.2f;
-                final float HeadThickness = 0.4f;
-                final float HeadLength = 0.4f;
-                final int NrSegments = 12; /* small value for testing */
+                final float BodyThickness = 0.15f;
+                final float HeadThickness = 0.3f;
+                final float HeadLengthOuter = 0.7f;
+                final float HeadLengthInner = 0.4f;
+                final int NrSegments = 12;
                 final ArrayList<Vec3f> Points = new ArrayList<Vec3f>();
                 final ArrayList<Vec3f> PointNormals = new ArrayList<Vec3f>();
                 final ArrayList<Integer> Faces = new ArrayList<Integer>();
@@ -89,6 +90,14 @@ public class VectorView extends android.opengl.GLSurfaceView
                     FirstBodyTop2 = -1,
                     FirstBodyBottom1 = -1,
                     FirstBodyBottom2 = -1;
+                final float OuterTiltCos =
+                    HeadThickness / (float)Math.hypot(HeadThickness, HeadLengthOuter);
+                final float OuterTiltSin =
+                    HeadLengthOuter / (float)Math.hypot(HeadThickness, HeadLengthOuter);
+                final float InnerTiltCos =
+                    HeadThickness / (float)Math.hypot(HeadThickness, HeadLengthInner);
+                final float InnerTiltSin =
+                    HeadLengthInner / (float)Math.hypot(HeadThickness, HeadLengthInner);
                 for (int i = 0;;)
                   {
                     final int
@@ -111,12 +120,17 @@ public class VectorView extends android.opengl.GLSurfaceView
                         final Vec3f TipNormal =
                             new Vec3f
                               (
-                                FaceCos * android.util.FloatMath.sqrt(0.5f),
-                                android.util.FloatMath.sqrt(0.5f),
-                                FaceSin * android.util.FloatMath.sqrt(0.5f)
+                                FaceCos * OuterTiltSin,
+                                OuterTiltCos,
+                                FaceSin * OuterTiltSin
                               );
-                              /* fixme: should really calculate tilt angle from HeadThickness and HeadLength */
-                        final Vec3f HeadNormal = BaseNormal;
+                        final Vec3f HeadNormal =
+                            new Vec3f
+                              (
+                                - FaceCos * InnerTiltSin,
+                                - InnerTiltCos,
+                                - FaceSin * InnerTiltSin
+                              );
                         final Vec3f BodyNormal = new Vec3f(FaceCos, 0.0f, FaceSin);
                         ThisTip = Points.size();
                         Points.add
@@ -125,7 +139,7 @@ public class VectorView extends android.opengl.GLSurfaceView
                           );
                         PointNormals.add(TipNormal);
                         final Vec3f HeadPoint =
-                            new Vec3f(HeadThickness * Cos, 1.0f - HeadLength, HeadThickness * Sin);
+                            new Vec3f(HeadThickness * Cos, 1.0f - HeadLengthOuter, HeadThickness * Sin);
                         ThisHead1 = Points.size();
                         Points.add(HeadPoint);
                         PointNormals.add(TipNormal);
@@ -133,7 +147,7 @@ public class VectorView extends android.opengl.GLSurfaceView
                         Points.add(HeadPoint);
                         PointNormals.add(HeadNormal);
                         final Vec3f BodyTopPoint =
-                            new Vec3f(BodyThickness * Cos, 1.0f - HeadLength, BodyThickness * Sin);
+                            new Vec3f(BodyThickness * Cos, 1.0f - HeadLengthInner, BodyThickness * Sin);
                         ThisBodyTop1 = Points.size();
                         Points.add(BodyTopPoint);
                         PointNormals.add(HeadNormal);

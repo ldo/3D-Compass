@@ -1,0 +1,15 @@
+3D compass is a sample Android application showing how to display
+a 3D arrow with OpenGL that takes its direction from the orientation
+sensor.
+
+Contents:
+    src/ -- Java sources for the Android app
+    res/ -- resources for the Android app
+    AndroidManifest.xml, build.xml, *.properties -- for driving
+        Google's Android build tools (note that you will have to
+        provide a couple more of these--see INSTALL for details)
+    README -- this file
+    INSTALL -- build/installation instructions
+    LICENSE -- licence (Apache 2.0, same as Google's sample code)
+
+Lawrence D'Oliveiro <ldo@geek-central.gen.nz>

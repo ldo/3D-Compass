@@ -31,6 +31,7 @@ public class VectorView extends android.opengl.GLSurfaceView
     class VectorViewRenderer implements Renderer
       {
         private final java.nio.IntBuffer VertexBuffer;
+        private final java.nio.IntBuffer NormalBuffer;
         private final java.nio.ShortBuffer IndexBuffer;
         final int NrIndexes;
 
@@ -42,6 +43,7 @@ public class VectorView extends android.opengl.GLSurfaceView
             int Ind3,
             int Ind4
           )
+          /* adds two triangles to represent a quadrilateral face. */
           {
             Faces.add(Ind1);
             Faces.add(Ind2);
@@ -54,7 +56,7 @@ public class VectorView extends android.opengl.GLSurfaceView
         public VectorViewRenderer()
           {
             super();
-            final int Vertices[];
+            final int Vertices[], Normals[];
             final short Indices[];
               {
                 final int one = 0x10000;
@@ -63,79 +65,151 @@ public class VectorView extends android.opengl.GLSurfaceView
                 final float HeadLength = 0.1f;
                 final int NrSegments = 6; /* small value for testing */
                 final ArrayList<Vec3f> Points = new ArrayList<Vec3f>();
+                final ArrayList<Vec3f> PointNormals = new ArrayList<Vec3f>();
                 final ArrayList<Integer> Faces = new ArrayList<Integer>();
-                Points.add(new Vec3f(0.0f, 1.0f, 0.0f));
-                Points.add(new Vec3f(0.0f, -1.0f, -.0f));
-                final int Tip = Points.size() - 2;
-                final int Base = Points.size() - 1;
-                int PrevHead = -1, PrevBodyTop = -1, PrevBodyBottom = -1;
-                int FirstHead = -1, FirstBodyTop = -1, FirstBodyBottom = -1;
+                final Vec3f BaseNormal = new Vec3f(0.0f, -1.0f, 0.0f);
+                final int Base = Points.size();
+                Points.add(new Vec3f(0.0f, -1.0f, 0.0f));
+                PointNormals.add(BaseNormal);
+              /* note point positions may be duplicates, but their normals
+                are different to ensure proper lighting */
+                int
+                    PrevTip = -1,
+                    PrevHead1 = -1,
+                    PrevHead2 = -1,
+                    PrevBodyTop1 = -1,
+                    PrevBodyTop2 = -1,
+                    PrevBodyBottom1 = -1,
+                    PrevBodyBottom2 = -1;
+                int
+                    FirstTip = -1,
+                    FirstHead1 = -1,
+                    FirstHead2 = -1,
+                    FirstBodyTop1 = -1,
+                    FirstBodyTop2 = -1,
+                    FirstBodyBottom1 = -1,
+                    FirstBodyBottom2 = -1;
                 for (int i = 0;;)
                   {
-                    final int ThisHead, ThisBodyTop, ThisBodyBottom;
+                    final int
+                        ThisTip,
+                        ThisHead1,
+                        ThisHead2,
+                        ThisBodyTop1,
+                        ThisBodyTop2,
+                        ThisBodyBottom1,
+                        ThisBodyBottom2;
                     if (i < NrSegments)
                       {
                         final float Angle = (float)(2.0 * Math.PI * i / NrSegments);
                         final float Cos = android.util.FloatMath.cos(Angle);
                         final float Sin = android.util.FloatMath.sin(Angle);
+                        final float FaceAngle =
+                            (float)(2.0 * Math.PI * (2 * i - 1) / (2 * NrSegments));
+                        final float FaceCos = android.util.FloatMath.cos(FaceAngle);
+                        final float FaceSin = android.util.FloatMath.sin(FaceAngle);
+                        final Vec3f TipNormal =
+                            new Vec3f
+                              (
+                                FaceCos * android.util.FloatMath.sqrt(0.5f),
+                                android.util.FloatMath.sqrt(0.5f),
+                                FaceSin * android.util.FloatMath.sqrt(0.5f)
+                              );
+                              /* fixme: should really calculate tilt angle from HeadThickness and HeadLength */
+                        final Vec3f HeadNormal = BaseNormal;
+                        final Vec3f BodyNormal = new Vec3f(FaceCos, 0.0f, FaceSin);
+                        ThisTip = Points.size();
                         Points.add
                           (
-                            new Vec3f(HeadThickness * Cos, 1.0f - HeadLength, HeadThickness * Sin)
+                            new Vec3f(0.0f, 1.0f, 0.0f)
                           );
-                        Points.add
-                          (
-                            new Vec3f(BodyThickness * Cos, 1.0f - HeadLength, BodyThickness * Sin)
-                          );
-                        Points.add
-                          (
-                            new Vec3f(BodyThickness * Cos, -1.0f, BodyThickness * Sin)
-                          );
-                        ThisHead = Points.size() - 3;
-                        ThisBodyTop = Points.size() - 2;
-                        ThisBodyBottom = Points.size() - 1;
+                        PointNormals.add(TipNormal);
+                        final Vec3f HeadPoint =
+                            new Vec3f(HeadThickness * Cos, 1.0f - HeadLength, HeadThickness * Sin);
+                        ThisHead1 = Points.size();
+                        Points.add(HeadPoint);
+                        PointNormals.add(TipNormal);
+                        ThisHead2 = Points.size();
+                        Points.add(HeadPoint);
+                        PointNormals.add(HeadNormal);
+                        final Vec3f BodyTopPoint =
+                            new Vec3f(BodyThickness * Cos, 1.0f - HeadLength, BodyThickness * Sin);
+                        ThisBodyTop1 = Points.size();
+                        Points.add(BodyTopPoint);
+                        PointNormals.add(HeadNormal);
+                        ThisBodyTop2 = Points.size();
+                        Points.add(BodyTopPoint);
+                        PointNormals.add(BodyNormal);
+                        final Vec3f BodyBottomPoint =
+                            new Vec3f(BodyThickness * Cos, -1.0f, BodyThickness * Sin);
+                        ThisBodyBottom1 = Points.size();
+                        Points.add(BodyBottomPoint);
+                        PointNormals.add(BodyNormal);
+                        ThisBodyBottom2 = Points.size();
+                        Points.add(BodyBottomPoint);
+                        PointNormals.add(BaseNormal);
                       }
                     else
                       {
-                        ThisHead = FirstHead;
-                        ThisBodyTop = FirstBodyTop;
-                        ThisBodyBottom = FirstBodyBottom;
+                        ThisTip = FirstTip;
+                        ThisHead1 = FirstHead1;
+                        ThisHead2 = FirstHead2;
+                        ThisBodyTop1 = FirstBodyTop1;
+                        ThisBodyTop2 = FirstBodyTop2;
+                        ThisBodyBottom1 = FirstBodyBottom1;
+                        ThisBodyBottom2 = FirstBodyBottom2;
                       } /*if*/
                     if (i != 0)
                       {
-                        Faces.add(PrevHead);
-                        Faces.add(Tip);
-                        Faces.add(ThisHead);
-                        AddQuad(Faces, PrevBodyTop, PrevHead, ThisHead, ThisBodyTop);
-                        AddQuad(Faces, PrevBodyBottom, PrevBodyTop, ThisBodyTop, ThisBodyBottom);
-                        Faces.add(PrevBodyBottom);
-                        Faces.add(ThisBodyBottom);
+                        Faces.add(PrevHead1);
+                        Faces.add(ThisTip);
+                        Faces.add(ThisHead1);
+                        AddQuad(Faces, PrevBodyTop1, PrevHead2, ThisHead2, ThisBodyTop1);
+                        AddQuad(Faces, PrevBodyBottom1, PrevBodyTop2, ThisBodyTop2, ThisBodyBottom1);
+                        Faces.add(PrevBodyBottom2);
+                        Faces.add(ThisBodyBottom2);
                         Faces.add(Base);
                       }
                     else
                       {
-                        FirstHead = ThisHead;
-                        FirstBodyTop = ThisBodyTop;
-                        FirstBodyBottom = ThisBodyBottom;
+                        FirstTip = ThisTip;
+                        FirstHead1 = ThisHead1;
+                        FirstHead2 = ThisHead2;
+                        FirstBodyTop1 = ThisBodyTop1;
+                        FirstBodyTop2 = ThisBodyTop2;
+                        FirstBodyBottom1 = ThisBodyBottom1;
+                        FirstBodyBottom2 = ThisBodyBottom2;
                       } /*if*/
-                    PrevHead = ThisHead;
-                    PrevBodyTop = ThisBodyTop;
-                    PrevBodyBottom = ThisBodyBottom;
+                    PrevTip = ThisTip;
+                    PrevHead1 = ThisHead1;
+                    PrevHead2 = ThisHead2;
+                    PrevBodyTop1 = ThisBodyTop1;
+                    PrevBodyTop2 = ThisBodyTop2;
+                    PrevBodyBottom1 = ThisBodyBottom1;
+                    PrevBodyBottom2 = ThisBodyBottom2;
                     if (i == NrSegments)
                         break;
                     ++i;
                   } /*for*/
                 final ArrayList<Integer> VertsFixed = new ArrayList<Integer>();
+                final ArrayList<Integer> NormalsFixed = new ArrayList<Integer>();
                 for (int i = 0; i < Points.size(); ++i)
                   {
                     final Vec3f Point = Points.get(i);
                     VertsFixed.add(new Integer((int)(Point.x * one)));
                     VertsFixed.add(new Integer((int)(Point.y * one)));
                     VertsFixed.add(new Integer((int)(Point.z * one)));
+                    final Vec3f PointNormal = PointNormals.get(i);
+                    NormalsFixed.add(new Integer((int)(PointNormal.x * one)));
+                    NormalsFixed.add(new Integer((int)(PointNormal.y * one)));
+                    NormalsFixed.add(new Integer((int)(PointNormal.z * one)));
                   } /*for*/
                 Vertices = new int[VertsFixed.size()];
+                Normals = new int[VertsFixed.size()];
                 for (int i = 0; i < Vertices.length; ++i)
                   {
                     Vertices[i] = VertsFixed.get(i);
+                    Normals[i] = NormalsFixed.get(i);
                   } /*for*/
                 Indices = new short[Faces.size()];
                 NrIndexes = Indices.length;
@@ -156,6 +230,12 @@ public class VectorView extends android.opengl.GLSurfaceView
                 .asIntBuffer();
             VertexBuffer.put(Vertices);
             VertexBuffer.position(0);
+            NormalBuffer =
+                java.nio.ByteBuffer.allocateDirect(Normals.length * 4)
+                .order(java.nio.ByteOrder.nativeOrder())
+                .asIntBuffer();
+            NormalBuffer.put(Normals);
+            NormalBuffer.position(0);
             IndexBuffer =
                 java.nio.ByteBuffer.allocateDirect(Indices.length * 2)
                 .order(java.nio.ByteOrder.nativeOrder())
@@ -170,32 +250,20 @@ public class VectorView extends android.opengl.GLSurfaceView
           )
           {
             gl.glClear(GL10.GL_COLOR_BUFFER_BIT | GL10.GL_DEPTH_BUFFER_BIT);
-            // TBD how to fill background arc?
-            final float Radius = 125.0f;
-            // Draw.translate(Radius, Radius);
-            // Draw.drawArc /* background */
-              // (
-                // /*oval =*/ new android.graphics.RectF(-Radius, -Radius, Radius, Radius),
-                // /*startAngle =*/ 0.0f,
-                // /*sweepAngle =*/ 360.0f,
-                // /*useCenter =*/ false,
-                // /*paint =*/ GraphicsUseful.FillWithColor(0xffffffa2)
-              // );
-            // TBD
             gl.glMatrixMode(GL10.GL_MODELVIEW);
             gl.glLoadIdentity();
             gl.glLightfv
               (
                 /*light =*/ GL10.GL_LIGHT0,
                 /*pname =*/ GL10.GL_POSITION,
-                /*params =*/ new float[] {2.0f, 0.0f, 2.0f, 1.0f},
+                /*params =*/ new float[] {0.0f, 0.5f, -0.5f, 1.0f},
                 /*offset =*/ 0
               );
             gl.glLightfv
               (
                 /*light =*/ GL10.GL_LIGHT0,
                 /*pname =*/ GL10.GL_AMBIENT,
-                /*params =*/ new float[] {0.2f, 0.2f, 0.2f, 1.0f},
+                /*params =*/ new float[] {0.4f, 0.4f, 0.4f, 1.0f},
                 /*offset =*/ 0
               );
             gl.glLightfv
@@ -212,30 +280,23 @@ public class VectorView extends android.opengl.GLSurfaceView
             gl.glScalef(2.0f, 2.0f, 2.0f);
             gl.glFrontFace(GL10.GL_CW);
             gl.glVertexPointer(3, GL10.GL_FIXED, 0, VertexBuffer);
-          /* gl.glNormalPointer(GL10.GL_FIXED, 0, VertexBuffer); */
-            gl.glColor4f(0.5f, 0.5f, 0.5f, 1.0f);
+            gl.glNormalPointer(GL10.GL_FIXED, 0, NormalBuffer);
+          /* gl.glColor4f(1.0f, 1.0f, 1.0f, 1.0f); */
+            gl.glMaterialfv
+              (
+                /*face =*/ GL10.GL_FRONT_AND_BACK,
+                /*pname =*/ GL10.GL_DIFFUSE,
+                /*params =*/ new float[] {0.4f, 0.4f, 0.4f, 1.0f},
+                /*offset =*/ 0
+              );
+            gl.glMaterialfv
+              (
+                /*face =*/ GL10.GL_FRONT_AND_BACK,
+                /*pname =*/ GL10.GL_SPECULAR,
+                /*params =*/ new float[] {0.6f, 0.6f, 0.6f, 1.0f},
+                /*offset =*/ 0
+              );
             gl.glDrawElements(GL10.GL_TRIANGLES, NrIndexes, GL10.GL_UNSIGNED_SHORT, IndexBuffer);
-          /* more TBD */
-            // final android.graphics.Path V = new android.graphics.Path();
-            // final float BaseWidth = 5.0f;
-            // final float EndWidth = BaseWidth * (1.0f + D.z);
-              // /* taper to simulate perspective foreshortening */
-            // V.moveTo(0.0f, 0.0f);
-            // V.lineTo(+ BaseWidth * D.y, - BaseWidth * D.x);
-            // V.lineTo
-              // (
-                // + EndWidth * D.y + Radius * D.x,
-                // - EndWidth * D.x + Radius * D.y
-              // );
-            // V.lineTo
-              // (
-                // - EndWidth * D.y + Radius * D.x,
-                // + EndWidth * D.x + Radius * D.y
-              // );
-            // V.lineTo(- BaseWidth * D.y, + BaseWidth * D.x);
-            // V.close();
-            // Draw.drawPath(V, GraphicsUseful.FillWithColor(0xff285c87));
-            // TBD
           } /*onDrawFrame*/
 
         public void onSurfaceChanged
@@ -274,7 +335,7 @@ public class VectorView extends android.opengl.GLSurfaceView
             gl.glEnable(GL10.GL_LIGHT0);
             gl.glEnable(GL10.GL_DEPTH_TEST);
             gl.glEnableClientState(GL10.GL_VERTEX_ARRAY);
-          /* gl.glEnableClientState(GL10.GL_NORMAL_ARRAY); */
+            gl.glEnableClientState(GL10.GL_NORMAL_ARRAY);
           } /*onSurfaceCreated*/
 
       } /*VectorViewRenderer*/

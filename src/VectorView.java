@@ -3,6 +3,7 @@ package nz.gen.geek_central.Compass3D;
     Graphical display of sensor data.
 */
 
+import java.util.ArrayList;
 import javax.microedition.khronos.opengles.GL10;
 
 class GraphicsUseful
@@ -30,32 +31,119 @@ public class VectorView extends android.opengl.GLSurfaceView
     class VectorViewRenderer implements Renderer
       {
         private final java.nio.IntBuffer VertexBuffer;
-        private final java.nio.ByteBuffer IndexBuffer;
+        private final java.nio.ShortBuffer IndexBuffer;
+        final int NrIndexes;
+
+        private void AddQuad
+          (
+            ArrayList<Integer> Faces,
+            int Ind1,
+            int Ind2,
+            int Ind3,
+            int Ind4
+          )
+          {
+            Faces.add(Ind1);
+            Faces.add(Ind2);
+            Faces.add(Ind3);
+            Faces.add(Ind4);
+            Faces.add(Ind1);
+            Faces.add(Ind3);
+          } /*AddQuad*/
 
         public VectorViewRenderer()
           {
             super();
-            final int one = 0x10000;
-            final int vertices[] =
+            final int Vertices[];
+            final short Indices[];
               {
-                -one, -one, -one,
-                one, -one, -one,
-                one, one, -one,
-                -one, one, -one,
-                -one, -one, one,
-                one, -one, one,
-                one, one, one,
-                -one, one, one,
-              };
-            final byte indices[] =
-              {
-                0, 4, 5,    0, 5, 1,
-                1, 5, 6,    1, 6, 2,
-                2, 6, 7,    2, 7, 3,
-                3, 7, 4,    3, 4, 0,
-                4, 7, 6,    4, 6, 5,
-                3, 0, 1,    3, 1, 2,
-              };
+                final int one = 0x10000;
+                final float BodyThickness = 0.05f;
+                final float HeadThickness = 0.1f;
+                final float HeadLength = 0.1f;
+                final int NrSegments = 6; /* small value for testing */
+                final ArrayList<Vec3f> Points = new ArrayList<Vec3f>();
+                final ArrayList<Integer> Faces = new ArrayList<Integer>();
+                Points.add(new Vec3f(0.0f, 1.0f, 0.0f));
+                Points.add(new Vec3f(0.0f, -1.0f, -.0f));
+                final int Tip = Points.size() - 2;
+                final int Base = Points.size() - 1;
+                int PrevHead = -1, PrevBodyTop = -1, PrevBodyBottom = -1;
+                int FirstHead = -1, FirstBodyTop = -1, FirstBodyBottom = -1;
+                for (int i = 0;;)
+                  {
+                    final int ThisHead, ThisBodyTop, ThisBodyBottom;
+                    if (i < NrSegments)
+                      {
+                        final float Angle = (float)(2.0 * Math.PI * i / NrSegments);
+                        final float Cos = android.util.FloatMath.cos(Angle);
+                        final float Sin = android.util.FloatMath.sin(Angle);
+                        Points.add
+                          (
+                            new Vec3f(HeadThickness * Cos, 1.0f - HeadLength, HeadThickness * Sin)
+                          );
+                        Points.add
+                          (
+                            new Vec3f(BodyThickness * Cos, 1.0f - HeadLength, BodyThickness * Sin)
+                          );
+                        Points.add
+                          (
+                            new Vec3f(BodyThickness * Cos, -1.0f, BodyThickness * Sin)
+                          );
+                        ThisHead = Points.size() - 3;
+                        ThisBodyTop = Points.size() - 2;
+                        ThisBodyBottom = Points.size() - 1;
+                      }
+                    else
+                      {
+                        ThisHead = FirstHead;
+                        ThisBodyTop = FirstBodyTop;
+                        ThisBodyBottom = FirstBodyBottom;
+                      } /*if*/
+                    if (i != 0)
+                      {
+                        Faces.add(PrevHead);
+                        Faces.add(Tip);
+                        Faces.add(ThisHead);
+                        AddQuad(Faces, PrevBodyTop, PrevHead, ThisHead, ThisBodyTop);
+                        AddQuad(Faces, PrevBodyBottom, PrevBodyTop, ThisBodyTop, ThisBodyBottom);
+                        Faces.add(PrevBodyBottom);
+                        Faces.add(ThisBodyBottom);
+                        Faces.add(Base);
+                      }
+                    else
+                      {
+                        FirstHead = ThisHead;
+                        FirstBodyTop = ThisBodyTop;
+                        FirstBodyBottom = ThisBodyBottom;
+                      } /*if*/
+                    PrevHead = ThisHead;
+                    PrevBodyTop = ThisBodyTop;
+                    PrevBodyBottom = ThisBodyBottom;
+                    if (i == NrSegments)
+                        break;
+                    ++i;
+                  } /*for*/
+                final ArrayList<Integer> VertsFixed = new ArrayList<Integer>();
+                for (int i = 0; i < Points.size(); ++i)
+                  {
+                    final Vec3f Point = Points.get(i);
+                    VertsFixed.add(new Integer((int)(Point.x * one)));
+                    VertsFixed.add(new Integer((int)(Point.y * one)));
+                    VertsFixed.add(new Integer((int)(Point.z * one)));
+                  } /*for*/
+                Vertices = new int[VertsFixed.size()];
+                for (int i = 0; i < Vertices.length; ++i)
+                  {
+                    Vertices[i] = VertsFixed.get(i);
+                  } /*for*/
+                Indices = new short[Faces.size()];
+                NrIndexes = Indices.length;
+                for (int i = 0; i < NrIndexes; ++i)
+                  {
+                    Indices[i] = (short)(int)Faces.get(i);
+                  } /*for*/
+              }
           /* Need to use allocateDirect to allocate buffers so garbage
             collector won't move them. Also make sure byte order is
             always native. But direct-allocation and order-setting methods
@@ -63,13 +151,16 @@ public class VectorView extends android.opengl.GLSurfaceView
             are allocated as ByteBuffers and then converted to more
             appropriate types. */
             VertexBuffer =
-                java.nio.ByteBuffer.allocateDirect(vertices.length * 4)
+                java.nio.ByteBuffer.allocateDirect(Vertices.length * 4)
                 .order(java.nio.ByteOrder.nativeOrder())
                 .asIntBuffer();
-            VertexBuffer.put(vertices);
+            VertexBuffer.put(Vertices);
             VertexBuffer.position(0);
-            IndexBuffer = java.nio.ByteBuffer.allocateDirect(indices.length);
-            IndexBuffer.put(indices);
+            IndexBuffer =
+                java.nio.ByteBuffer.allocateDirect(Indices.length * 2)
+                .order(java.nio.ByteOrder.nativeOrder())
+                .asShortBuffer();
+            IndexBuffer.put(Indices);
             IndexBuffer.position(0);
           } /*VectorViewRenderer*/
 
@@ -118,12 +209,12 @@ public class VectorView extends android.opengl.GLSurfaceView
             gl.glRotatef(Roll, 0, 1, 0);
             gl.glRotatef(Elev, 1, 0, 0);
             gl.glRotatef(Azi, 0, 0, 1);
-          /* TBD temp */
+            gl.glScalef(2.0f, 2.0f, 2.0f);
             gl.glFrontFace(GL10.GL_CW);
             gl.glVertexPointer(3, GL10.GL_FIXED, 0, VertexBuffer);
-            gl.glNormalPointer(GL10.GL_FIXED, 0, VertexBuffer);
-            gl.glColor4f(0.5f, 0.5f, 0.5f, 0.5f);
-            gl.glDrawElements(GL10.GL_TRIANGLES, 36, GL10.GL_UNSIGNED_BYTE, IndexBuffer);
+          /* gl.glNormalPointer(GL10.GL_FIXED, 0, VertexBuffer); */
+            gl.glColor4f(0.5f, 0.5f, 0.5f, 1.0f);
+            gl.glDrawElements(GL10.GL_TRIANGLES, NrIndexes, GL10.GL_UNSIGNED_SHORT, IndexBuffer);
           /* more TBD */
             // final android.graphics.Path V = new android.graphics.Path();
             // final float BaseWidth = 5.0f;
@@ -183,7 +274,7 @@ public class VectorView extends android.opengl.GLSurfaceView
             gl.glEnable(GL10.GL_LIGHT0);
             gl.glEnable(GL10.GL_DEPTH_TEST);
             gl.glEnableClientState(GL10.GL_VERTEX_ARRAY);
-            gl.glEnableClientState(GL10.GL_NORMAL_ARRAY);
+          /* gl.glEnableClientState(GL10.GL_NORMAL_ARRAY); */
           } /*onSurfaceCreated*/
 
       } /*VectorViewRenderer*/

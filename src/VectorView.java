@@ -307,7 +307,7 @@ public class VectorView extends android.opengl.GLSurfaceView
               (
                 /*face =*/ GL10.GL_FRONT_AND_BACK,
                 /*pname =*/ GL10.GL_SPECULAR,
-                /*params =*/ new float[] {0.6f, 0.6f, 0.6f, 1.0f},
+                /*params =*/ new float[] {0.6f, 0.6f, 0.36f, 1.0f},
                 /*offset =*/ 0
               );
             gl.glDrawElements(GL10.GL_TRIANGLES, NrIndexes, GL10.GL_UNSIGNED_SHORT, IndexBuffer);
@@ -340,7 +340,7 @@ public class VectorView extends android.opengl.GLSurfaceView
             javax.microedition.khronos.egl.EGLConfig Config
           )
           {
-            gl.glClearColor(1.0f, 1.0f, 0.635f, 1.0f);
+            gl.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
             gl.glEnable(GL10.GL_CULL_FACE);
             gl.glShadeModel(GL10.GL_SMOOTH);
             gl.glEnable(GL10.GL_LIGHTING);

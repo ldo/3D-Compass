@@ -4,9 +4,6 @@ package nz.gen.geek_central.Compass3D;
 */
 
 import javax.microedition.khronos.opengles.GL10;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.IntBuffer;
 
 class GraphicsUseful
   {
@@ -32,67 +29,48 @@ public class VectorView extends android.opengl.GLSurfaceView
 
     class VectorViewRenderer implements Renderer
       {
-        private int one = 0x10000;
-        private int vertices[] = {
+        private final java.nio.IntBuffer VertexBuffer;
+        private final java.nio.ByteBuffer IndexBuffer;
+
+        public VectorViewRenderer()
+          {
+            super();
+            final int one = 0x10000;
+            final int vertices[] =
+              {
                 -one, -one, -one,
                 one, -one, -one,
-                one,  one, -one,
-                -one,  one, -one,
-                -one, -one,  one,
-                one, -one,  one,
-                one,  one,  one,
-                -one,  one,  one,
-        };
-
-        private int colors[] = {
-                0,    0,    0,  one,
-                one,    0,    0,  one,
-                one,  one,    0,  one,
-                0,  one,    0,  one,
-                0,    0,  one,  one,
-                one,    0,  one,  one,
-                one,  one,  one,  one,
-                0,  one,  one,  one,
-        };
-
-        private byte indices[] = {
+                one, one, -one,
+                -one, one, -one,
+                -one, -one, one,
+                one, -one, one,
+                one, one, one,
+                -one, one, one,
+              };
+            final byte indices[] =
+              {
                 0, 4, 5,    0, 5, 1,
                 1, 5, 6,    1, 6, 2,
                 2, 6, 7,    2, 7, 3,
                 3, 7, 4,    3, 4, 0,
                 4, 7, 6,    4, 6, 5,
                 3, 0, 1,    3, 1, 2,
-        };
-
-        private IntBuffer mVertexBuffer;
-        private IntBuffer mColorBuffer;
-        private ByteBuffer mIndexBuffer;
-
-        public VectorViewRenderer()
-          {
-            super();
-            // Buffers to be passed to gl*Pointer() functions
-            // must be direct, i.e., they must be placed on the
-            // native heap where the garbage collector cannot
-            // move them.
-            //
-            // Buffers with multi-byte datatypes (e.g., short, int, float)
-            // must have their byte order set to native order
-            ByteBuffer vbb = ByteBuffer.allocateDirect(vertices.length*4);
-            vbb.order(ByteOrder.nativeOrder());
-            mVertexBuffer = vbb.asIntBuffer();
-            mVertexBuffer.put(vertices);
-            mVertexBuffer.position(0);
-
-            ByteBuffer cbb = ByteBuffer.allocateDirect(colors.length*4);
-            cbb.order(ByteOrder.nativeOrder());
-            mColorBuffer = cbb.asIntBuffer();
-            mColorBuffer.put(colors);
-            mColorBuffer.position(0);
-
-            mIndexBuffer = ByteBuffer.allocateDirect(indices.length);
-            mIndexBuffer.put(indices);
-            mIndexBuffer.position(0);
+              };
+          /* Need to use allocateDirect to allocate buffers so garbage
+            collector won't move them. Also make sure byte order is
+            always native. But direct-allocation and order-setting methods
+            are only available for ByteBuffer. Which is why buffers
+            are allocated as ByteBuffers and then converted to more
+            appropriate types. */
+            VertexBuffer =
+                java.nio.ByteBuffer.allocateDirect(vertices.length * 4)
+                .order(java.nio.ByteOrder.nativeOrder())
+                .asIntBuffer();
+            VertexBuffer.put(vertices);
+            VertexBuffer.position(0);
+            IndexBuffer = java.nio.ByteBuffer.allocateDirect(indices.length);
+            IndexBuffer.put(indices);
+            IndexBuffer.position(0);
           } /*VectorViewRenderer*/
 
         public void onDrawFrame
@@ -115,15 +93,37 @@ public class VectorView extends android.opengl.GLSurfaceView
             // TBD
             gl.glMatrixMode(GL10.GL_MODELVIEW);
             gl.glLoadIdentity();
+            gl.glLightfv
+              (
+                /*light =*/ GL10.GL_LIGHT0,
+                /*pname =*/ GL10.GL_POSITION,
+                /*params =*/ new float[] {2.0f, 0.0f, 2.0f, 1.0f},
+                /*offset =*/ 0
+              );
+            gl.glLightfv
+              (
+                /*light =*/ GL10.GL_LIGHT0,
+                /*pname =*/ GL10.GL_AMBIENT,
+                /*params =*/ new float[] {0.2f, 0.2f, 0.2f, 1.0f},
+                /*offset =*/ 0
+              );
+            gl.glLightfv
+              (
+                /*light =*/ GL10.GL_LIGHT0,
+                /*pname =*/ GL10.GL_SPECULAR,
+                /*params =*/ new float[] {1.0f, 1.0f, 1.0f, 1.0f},
+                /*offset =*/ 0
+              );
             gl.glTranslatef(0, 0, -3.0f);
             gl.glRotatef(Roll, 0, 1, 0);
             gl.glRotatef(Elev, 1, 0, 0);
             gl.glRotatef(Azi, 0, 0, 1);
           /* TBD temp */
             gl.glFrontFace(GL10.GL_CW);
-            gl.glVertexPointer(3, GL10.GL_FIXED, 0, mVertexBuffer);
-            gl.glColorPointer(4, GL10.GL_FIXED, 0, mColorBuffer);
-            gl.glDrawElements(GL10.GL_TRIANGLES, 36, GL10.GL_UNSIGNED_BYTE, mIndexBuffer);
+            gl.glVertexPointer(3, GL10.GL_FIXED, 0, VertexBuffer);
+            gl.glNormalPointer(GL10.GL_FIXED, 0, VertexBuffer);
+            gl.glColor4f(0.5f, 0.5f, 0.5f, 0.5f);
+            gl.glDrawElements(GL10.GL_TRIANGLES, 36, GL10.GL_UNSIGNED_BYTE, IndexBuffer);
           /* more TBD */
             // final android.graphics.Path V = new android.graphics.Path();
             // final float BaseWidth = 5.0f;
@@ -177,9 +177,13 @@ public class VectorView extends android.opengl.GLSurfaceView
             gl.glClearColor(1.0f, 1.0f, 0.635f, 1.0f);
             gl.glEnable(GL10.GL_CULL_FACE);
             gl.glShadeModel(GL10.GL_SMOOTH);
+              /* GL_FLAT produces discontinuities across triangles making
+                up each face--probably need better normals or texture coordinates */
+            gl.glEnable(GL10.GL_LIGHTING);
+            gl.glEnable(GL10.GL_LIGHT0);
             gl.glEnable(GL10.GL_DEPTH_TEST);
             gl.glEnableClientState(GL10.GL_VERTEX_ARRAY);
-            gl.glEnableClientState(GL10.GL_COLOR_ARRAY);
+            gl.glEnableClientState(GL10.GL_NORMAL_ARRAY);
           } /*onSurfaceCreated*/
 
       } /*VectorViewRenderer*/

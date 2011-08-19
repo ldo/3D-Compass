@@ -2,6 +2,10 @@
 a 3D arrow with OpenGL that takes its direction from the orientation
 sensor.
 
+Note that the compass direction is sometimes inaccurate--at least,
+on my HTC Desire it is. However, turning the phone this way and
+that will often nudge it back into a sensible reading.
+
 Contents:
     src/ -- Java sources for the Android app
     res/ -- resources for the Android app

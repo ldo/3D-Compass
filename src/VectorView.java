@@ -113,8 +113,6 @@ public class VectorView extends android.opengl.GLSurfaceView
                 // /*paint =*/ GraphicsUseful.FillWithColor(0xffffffa2)
               // );
             // TBD
-            gl.glEnableClientState(GL10.GL_VERTEX_ARRAY);
-            gl.glEnableClientState(GL10.GL_COLOR_ARRAY);
             gl.glMatrixMode(GL10.GL_MODELVIEW);
             gl.glLoadIdentity();
             gl.glTranslatef(0, 0, -3.0f);
@@ -180,6 +178,8 @@ public class VectorView extends android.opengl.GLSurfaceView
             gl.glEnable(GL10.GL_CULL_FACE);
             gl.glShadeModel(GL10.GL_SMOOTH);
             gl.glEnable(GL10.GL_DEPTH_TEST);
+            gl.glEnableClientState(GL10.GL_VERTEX_ARRAY);
+            gl.glEnableClientState(GL10.GL_COLOR_ARRAY);
           } /*onSurfaceCreated*/
 
       } /*VectorViewRenderer*/

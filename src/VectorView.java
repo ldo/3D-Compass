@@ -242,20 +242,20 @@ public class VectorView extends android.opengl.GLSurfaceView
             VertexBuffer =
                 java.nio.ByteBuffer.allocateDirect(Vertices.length * 4)
                 .order(java.nio.ByteOrder.nativeOrder())
-                .asIntBuffer();
-            VertexBuffer.put(Vertices);
+                .asIntBuffer()
+                .put(Vertices);
             VertexBuffer.position(0);
             NormalBuffer =
                 java.nio.ByteBuffer.allocateDirect(Normals.length * 4)
                 .order(java.nio.ByteOrder.nativeOrder())
-                .asIntBuffer();
-            NormalBuffer.put(Normals);
+                .asIntBuffer()
+                .put(Normals);
             NormalBuffer.position(0);
             IndexBuffer =
                 java.nio.ByteBuffer.allocateDirect(Indices.length * 2)
                 .order(java.nio.ByteOrder.nativeOrder())
-                .asShortBuffer();
-            IndexBuffer.put(Indices);
+                .asShortBuffer()
+                .put(Indices);
             IndexBuffer.position(0);
           } /*VectorViewRenderer*/
 
@@ -296,7 +296,6 @@ public class VectorView extends android.opengl.GLSurfaceView
             gl.glFrontFace(GL10.GL_CCW);
             gl.glVertexPointer(3, GL10.GL_FIXED, 0, VertexBuffer);
             gl.glNormalPointer(GL10.GL_FIXED, 0, NormalBuffer);
-          /* gl.glColor4f(1.0f, 1.0f, 1.0f, 1.0f); */
             gl.glMaterialfv
               (
                 /*face =*/ GL10.GL_FRONT_AND_BACK,

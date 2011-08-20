@@ -17,27 +17,7 @@ package nz.gen.geek_central.Compass3D;
     the License.
 */
 
-import java.util.ArrayList;
 import javax.microedition.khronos.opengles.GL10;
-
-class Vec3f
-  /* 3D vectors */
-  {
-    public final float x, y, z;
-
-    public Vec3f
-      (
-        float x,
-        float y,
-        float z
-      )
-      {
-        this.x = x;
-        this.y = y;
-        this.z = z;
-      } /*Vec3f*/
-
-  } /*Vec3f*/
 
 public class VectorView extends android.opengl.GLSurfaceView
   {
@@ -45,232 +25,137 @@ public class VectorView extends android.opengl.GLSurfaceView
 
     class VectorViewRenderer implements Renderer
       {
-        private final java.nio.IntBuffer VertexBuffer;
-        private final java.nio.IntBuffer NormalBuffer;
-        private final java.nio.ShortBuffer IndexBuffer;
-        final int NrIndexes;
-
-        private void AddQuad
-          (
-            ArrayList<Integer> Faces,
-            int Ind1,
-            int Ind2,
-            int Ind3,
-            int Ind4
-          )
-          /* adds two triangles to represent a quadrilateral face. */
-          {
-            Faces.add(Ind1);
-            Faces.add(Ind2);
-            Faces.add(Ind3);
-            Faces.add(Ind4);
-            Faces.add(Ind1);
-            Faces.add(Ind3);
-          } /*AddQuad*/
+        private final GeomBuilder.Obj Arrow;
 
         public VectorViewRenderer()
           {
             super();
-            final int Vertices[], Normals[];
-            final short Indices[];
+            final float BodyThickness = 0.15f;
+            final float HeadThickness = 0.3f;
+            final float HeadLengthOuter = 0.7f;
+            final float HeadLengthInner = 0.4f;
+            final int NrSegments = 12;
+            final GeomBuilder.Vec3f BaseNormal = new GeomBuilder.Vec3f(0.0f, -1.0f, 0.0f);
+            final GeomBuilder Geom = new GeomBuilder
+              (
+                /*GotNormals =*/ true,
+                /*GotTexCoords =*/ false,
+                /*GotColors =*/ false
+              );
+            final int Base = Geom.Add(new GeomBuilder.Vec3f(0.0f, -1.0f, 0.0f), BaseNormal, null, null);
+          /* note point positions may be duplicates, but their normals
+            are different to ensure proper lighting */
+            int
+                PrevTip = -1,
+                PrevHead1 = -1,
+                PrevHead2 = -1,
+                PrevBodyTop1 = -1,
+                PrevBodyTop2 = -1,
+                PrevBodyBottom1 = -1,
+                PrevBodyBottom2 = -1;
+            int
+                FirstTip = -1,
+                FirstHead1 = -1,
+                FirstHead2 = -1,
+                FirstBodyTop1 = -1,
+                FirstBodyTop2 = -1,
+                FirstBodyBottom1 = -1,
+                FirstBodyBottom2 = -1;
+            final float OuterTiltCos =
+                HeadThickness / (float)Math.hypot(HeadThickness, HeadLengthOuter);
+            final float OuterTiltSin =
+                HeadLengthOuter / (float)Math.hypot(HeadThickness, HeadLengthOuter);
+            final float InnerTiltCos =
+                HeadThickness / (float)Math.hypot(HeadThickness, HeadLengthInner);
+            final float InnerTiltSin =
+                HeadLengthInner / (float)Math.hypot(HeadThickness, HeadLengthInner);
+            for (int i = 0;;)
               {
-                final int one = 0x10000;
-                final float BodyThickness = 0.15f;
-                final float HeadThickness = 0.3f;
-                final float HeadLengthOuter = 0.7f;
-                final float HeadLengthInner = 0.4f;
-                final int NrSegments = 12;
-                final ArrayList<Vec3f> Points = new ArrayList<Vec3f>();
-                final ArrayList<Vec3f> PointNormals = new ArrayList<Vec3f>();
-                final ArrayList<Integer> Faces = new ArrayList<Integer>();
-                final Vec3f BaseNormal = new Vec3f(0.0f, -1.0f, 0.0f);
-                final int Base = Points.size();
-                Points.add(new Vec3f(0.0f, -1.0f, 0.0f));
-                PointNormals.add(BaseNormal);
-              /* note point positions may be duplicates, but their normals
-                are different to ensure proper lighting */
-                int
-                    PrevTip = -1,
-                    PrevHead1 = -1,
-                    PrevHead2 = -1,
-                    PrevBodyTop1 = -1,
-                    PrevBodyTop2 = -1,
-                    PrevBodyBottom1 = -1,
-                    PrevBodyBottom2 = -1;
-                int
-                    FirstTip = -1,
-                    FirstHead1 = -1,
-                    FirstHead2 = -1,
-                    FirstBodyTop1 = -1,
-                    FirstBodyTop2 = -1,
-                    FirstBodyBottom1 = -1,
-                    FirstBodyBottom2 = -1;
-                final float OuterTiltCos =
-                    HeadThickness / (float)Math.hypot(HeadThickness, HeadLengthOuter);
-                final float OuterTiltSin =
-                    HeadLengthOuter / (float)Math.hypot(HeadThickness, HeadLengthOuter);
-                final float InnerTiltCos =
-                    HeadThickness / (float)Math.hypot(HeadThickness, HeadLengthInner);
-                final float InnerTiltSin =
-                    HeadLengthInner / (float)Math.hypot(HeadThickness, HeadLengthInner);
-                for (int i = 0;;)
+                final int
+                    ThisTip,
+                    ThisHead1,
+                    ThisHead2,
+                    ThisBodyTop1,
+                    ThisBodyTop2,
+                    ThisBodyBottom1,
+                    ThisBodyBottom2;
+                if (i < NrSegments)
                   {
-                    final int
-                        ThisTip,
-                        ThisHead1,
-                        ThisHead2,
-                        ThisBodyTop1,
-                        ThisBodyTop2,
-                        ThisBodyBottom1,
-                        ThisBodyBottom2;
-                    if (i < NrSegments)
-                      {
-                        final float Angle = (float)(2.0 * Math.PI * i / NrSegments);
-                        final float Cos = android.util.FloatMath.cos(Angle);
-                        final float Sin = android.util.FloatMath.sin(Angle);
-                        final float FaceAngle =
-                            (float)(2.0 * Math.PI * (2 * i - 1) / (2 * NrSegments));
-                        final float FaceCos = android.util.FloatMath.cos(FaceAngle);
-                        final float FaceSin = android.util.FloatMath.sin(FaceAngle);
-                        final Vec3f TipNormal =
-                            new Vec3f
-                              (
-                                FaceCos * OuterTiltSin,
-                                OuterTiltCos,
-                                FaceSin * OuterTiltSin
-                              );
-                        final Vec3f HeadNormal =
-                            new Vec3f
-                              (
-                                - FaceCos * InnerTiltSin,
-                                - InnerTiltCos,
-                                - FaceSin * InnerTiltSin
-                              );
-                        final Vec3f BodyNormal = new Vec3f(FaceCos, 0.0f, FaceSin);
-                        ThisTip = Points.size();
-                        Points.add
+                    final float Angle = (float)(2.0 * Math.PI * i / NrSegments);
+                    final float Cos = android.util.FloatMath.cos(Angle);
+                    final float Sin = android.util.FloatMath.sin(Angle);
+                    final float FaceAngle =
+                        (float)(2.0 * Math.PI * (2 * i - 1) / (2 * NrSegments));
+                    final float FaceCos = android.util.FloatMath.cos(FaceAngle);
+                    final float FaceSin = android.util.FloatMath.sin(FaceAngle);
+                    final GeomBuilder.Vec3f TipNormal =
+                        new GeomBuilder.Vec3f
                           (
-                            new Vec3f(0.0f, 1.0f, 0.0f)
+                            FaceCos * OuterTiltSin,
+                            OuterTiltCos,
+                            FaceSin * OuterTiltSin
                           );
-                        PointNormals.add(TipNormal);
-                        final Vec3f HeadPoint =
-                            new Vec3f(HeadThickness * Cos, 1.0f - HeadLengthOuter, HeadThickness * Sin);
-                        ThisHead1 = Points.size();
-                        Points.add(HeadPoint);
-                        PointNormals.add(TipNormal);
-                        ThisHead2 = Points.size();
-                        Points.add(HeadPoint);
-                        PointNormals.add(HeadNormal);
-                        final Vec3f BodyTopPoint =
-                            new Vec3f(BodyThickness * Cos, 1.0f - HeadLengthInner, BodyThickness * Sin);
-                        ThisBodyTop1 = Points.size();
-                        Points.add(BodyTopPoint);
-                        PointNormals.add(HeadNormal);
-                        ThisBodyTop2 = Points.size();
-                        Points.add(BodyTopPoint);
-                        PointNormals.add(BodyNormal);
-                        final Vec3f BodyBottomPoint =
-                            new Vec3f(BodyThickness * Cos, -1.0f, BodyThickness * Sin);
-                        ThisBodyBottom1 = Points.size();
-                        Points.add(BodyBottomPoint);
-                        PointNormals.add(BodyNormal);
-                        ThisBodyBottom2 = Points.size();
-                        Points.add(BodyBottomPoint);
-                        PointNormals.add(BaseNormal);
-                      }
-                    else
-                      {
-                        ThisTip = FirstTip;
-                        ThisHead1 = FirstHead1;
-                        ThisHead2 = FirstHead2;
-                        ThisBodyTop1 = FirstBodyTop1;
-                        ThisBodyTop2 = FirstBodyTop2;
-                        ThisBodyBottom1 = FirstBodyBottom1;
-                        ThisBodyBottom2 = FirstBodyBottom2;
-                      } /*if*/
-                    if (i != 0)
-                      {
-                        Faces.add(PrevHead1);
-                        Faces.add(ThisTip);
-                        Faces.add(ThisHead1);
-                        AddQuad(Faces, PrevBodyTop1, PrevHead2, ThisHead2, ThisBodyTop1);
-                        AddQuad(Faces, PrevBodyBottom1, PrevBodyTop2, ThisBodyTop2, ThisBodyBottom1);
-                        Faces.add(PrevBodyBottom2);
-                        Faces.add(ThisBodyBottom2);
-                        Faces.add(Base);
-                      }
-                    else
-                      {
-                        FirstTip = ThisTip;
-                        FirstHead1 = ThisHead1;
-                        FirstHead2 = ThisHead2;
-                        FirstBodyTop1 = ThisBodyTop1;
-                        FirstBodyTop2 = ThisBodyTop2;
-                        FirstBodyBottom1 = ThisBodyBottom1;
-                        FirstBodyBottom2 = ThisBodyBottom2;
-                      } /*if*/
-                    PrevTip = ThisTip;
-                    PrevHead1 = ThisHead1;
-                    PrevHead2 = ThisHead2;
-                    PrevBodyTop1 = ThisBodyTop1;
-                    PrevBodyTop2 = ThisBodyTop2;
-                    PrevBodyBottom1 = ThisBodyBottom1;
-                    PrevBodyBottom2 = ThisBodyBottom2;
-                    if (i == NrSegments)
-                        break;
-                    ++i;
-                  } /*for*/
-                final ArrayList<Integer> VertsFixed = new ArrayList<Integer>();
-                final ArrayList<Integer> NormalsFixed = new ArrayList<Integer>();
-                for (int i = 0; i < Points.size(); ++i)
+                    final GeomBuilder.Vec3f HeadNormal =
+                        new GeomBuilder.Vec3f
+                          (
+                            - FaceCos * InnerTiltSin,
+                            - InnerTiltCos,
+                            - FaceSin * InnerTiltSin
+                          );
+                    final GeomBuilder.Vec3f BodyNormal = new GeomBuilder.Vec3f(FaceCos, 0.0f, FaceSin);
+                    ThisTip = Geom.Add(new GeomBuilder.Vec3f(0.0f, 1.0f, 0.0f), TipNormal, null, null);
+                    final GeomBuilder.Vec3f HeadPoint =
+                        new GeomBuilder.Vec3f(HeadThickness * Cos, 1.0f - HeadLengthOuter, HeadThickness * Sin);
+                    ThisHead1 = Geom.Add(HeadPoint, TipNormal, null, null);
+                    ThisHead2 = Geom.Add(HeadPoint, HeadNormal, null, null);
+                    final GeomBuilder.Vec3f BodyTopPoint =
+                        new GeomBuilder.Vec3f(BodyThickness * Cos, 1.0f - HeadLengthInner, BodyThickness * Sin);
+                    ThisBodyTop1 = Geom.Add(BodyTopPoint, HeadNormal, null, null);
+                    ThisBodyTop2 = Geom.Add(BodyTopPoint, BodyNormal, null, null);
+                    final GeomBuilder.Vec3f BodyBottomPoint =
+                        new GeomBuilder.Vec3f(BodyThickness * Cos, -1.0f, BodyThickness * Sin);
+                    ThisBodyBottom1 = Geom.Add(BodyBottomPoint, BodyNormal, null, null);
+                    ThisBodyBottom2 = Geom.Add(BodyBottomPoint, BaseNormal, null, null);
+                  }
+                else
                   {
-                    final Vec3f Point = Points.get(i);
-                    VertsFixed.add(new Integer((int)(Point.x * one)));
-                    VertsFixed.add(new Integer((int)(Point.y * one)));
-                    VertsFixed.add(new Integer((int)(Point.z * one)));
-                    final Vec3f PointNormal = PointNormals.get(i);
-                    NormalsFixed.add(new Integer((int)(PointNormal.x * one)));
-                    NormalsFixed.add(new Integer((int)(PointNormal.y * one)));
-                    NormalsFixed.add(new Integer((int)(PointNormal.z * one)));
-                  } /*for*/
-                Vertices = new int[VertsFixed.size()];
-                Normals = new int[VertsFixed.size()];
-                for (int i = 0; i < Vertices.length; ++i)
+                    ThisTip = FirstTip;
+                    ThisHead1 = FirstHead1;
+                    ThisHead2 = FirstHead2;
+                    ThisBodyTop1 = FirstBodyTop1;
+                    ThisBodyTop2 = FirstBodyTop2;
+                    ThisBodyBottom1 = FirstBodyBottom1;
+                    ThisBodyBottom2 = FirstBodyBottom2;
+                  } /*if*/
+                if (i != 0)
                   {
-                    Vertices[i] = VertsFixed.get(i);
-                    Normals[i] = NormalsFixed.get(i);
-                  } /*for*/
-                Indices = new short[Faces.size()];
-                NrIndexes = Indices.length;
-                for (int i = 0; i < NrIndexes; ++i)
+                    Geom.AddTri(PrevHead1, ThisTip, ThisHead1);
+                    Geom.AddQuad(PrevBodyTop1, PrevHead2, ThisHead2, ThisBodyTop1);
+                    Geom.AddQuad(PrevBodyBottom1, PrevBodyTop2, ThisBodyTop2, ThisBodyBottom1);
+                    Geom.AddTri(PrevBodyBottom2, ThisBodyBottom2, Base);
+                  }
+                else
                   {
-                    Indices[i] = (short)(int)Faces.get(i);
-                  } /*for*/
-              }
-          /* Need to use allocateDirect to allocate buffers so garbage
-            collector won't move them. Also make sure byte order is
-            always native. But direct-allocation and order-setting methods
-            are only available for ByteBuffer. Which is why buffers
-            are allocated as ByteBuffers and then converted to more
-            appropriate types. */
-            VertexBuffer =
-                java.nio.ByteBuffer.allocateDirect(Vertices.length * 4)
-                .order(java.nio.ByteOrder.nativeOrder())
-                .asIntBuffer()
-                .put(Vertices);
-            VertexBuffer.position(0);
-            NormalBuffer =
-                java.nio.ByteBuffer.allocateDirect(Normals.length * 4)
-                .order(java.nio.ByteOrder.nativeOrder())
-                .asIntBuffer()
-                .put(Normals);
-            NormalBuffer.position(0);
-            IndexBuffer =
-                java.nio.ByteBuffer.allocateDirect(Indices.length * 2)
-                .order(java.nio.ByteOrder.nativeOrder())
-                .asShortBuffer()
-                .put(Indices);
-            IndexBuffer.position(0);
+                    FirstTip = ThisTip;
+                    FirstHead1 = ThisHead1;
+                    FirstHead2 = ThisHead2;
+                    FirstBodyTop1 = ThisBodyTop1;
+                    FirstBodyTop2 = ThisBodyTop2;
+                    FirstBodyBottom1 = ThisBodyBottom1;
+                    FirstBodyBottom2 = ThisBodyBottom2;
+                  } /*if*/
+                PrevTip = ThisTip;
+                PrevHead1 = ThisHead1;
+                PrevHead2 = ThisHead2;
+                PrevBodyTop1 = ThisBodyTop1;
+                PrevBodyTop2 = ThisBodyTop2;
+                PrevBodyBottom1 = ThisBodyBottom1;
+                PrevBodyBottom2 = ThisBodyBottom2;
+                if (i == NrSegments)
+                    break;
+                ++i;
+              } /*for*/
+            Arrow = Geom.MakeObj();
           } /*VectorViewRenderer*/
 
         public void onDrawFrame
@@ -311,8 +196,6 @@ public class VectorView extends android.opengl.GLSurfaceView
             gl.glRotatef(Azi, 0, 0, 1);
             gl.glScalef(2.0f, 2.0f, 2.0f);
             gl.glFrontFace(GL10.GL_CCW);
-            gl.glVertexPointer(3, GL10.GL_FIXED, 0, VertexBuffer);
-            gl.glNormalPointer(GL10.GL_FIXED, 0, NormalBuffer);
             gl.glMaterialfv
               (
                 /*face =*/ GL10.GL_FRONT_AND_BACK,
@@ -327,7 +210,7 @@ public class VectorView extends android.opengl.GLSurfaceView
                 /*params =*/ new float[] {0.6f, 0.6f, 0.36f, 1.0f},
                 /*offset =*/ 0
               );
-            gl.glDrawElements(GL10.GL_TRIANGLES, NrIndexes, GL10.GL_UNSIGNED_SHORT, IndexBuffer);
+            Arrow.Draw(gl);
           } /*onDrawFrame*/
 
         public void onSurfaceChanged
@@ -363,8 +246,6 @@ public class VectorView extends android.opengl.GLSurfaceView
             gl.glEnable(GL10.GL_LIGHTING);
             gl.glEnable(GL10.GL_LIGHT0);
             gl.glEnable(GL10.GL_DEPTH_TEST);
-            gl.glEnableClientState(GL10.GL_VERTEX_ARRAY);
-            gl.glEnableClientState(GL10.GL_NORMAL_ARRAY);
           } /*onSurfaceCreated*/
 
       } /*VectorViewRenderer*/

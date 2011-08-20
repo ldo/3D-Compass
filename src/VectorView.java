@@ -34,6 +34,7 @@ public class VectorView extends android.opengl.GLSurfaceView
             final float HeadThickness = 0.3f;
             final float HeadLengthOuter = 0.7f;
             final float HeadLengthInner = 0.4f;
+            final float BaseBevel = 0.2f * BodyThickness;
             final int NrSectors = 12;
             final float OuterTiltCos =
                 HeadThickness / (float)Math.hypot(HeadThickness, HeadLengthOuter);
@@ -49,6 +50,12 @@ public class VectorView extends android.opengl.GLSurfaceView
                     new GeomBuilder.Vec3f(OuterTiltSin, OuterTiltCos, 0.0f), /* tip */
                     new GeomBuilder.Vec3f(InnerTiltSin, - InnerTiltCos, 0.0f), /* head */
                     new GeomBuilder.Vec3f(1.0f, 0.0f, 0.0f), /* body */
+                    new GeomBuilder.Vec3f
+                      (
+                        android.util.FloatMath.sqrt(0.5f),
+                        -android.util.FloatMath.sqrt(0.5f),
+                        0.0f
+                      ), /* bevel */
                     new GeomBuilder.Vec3f(0.0f, -1.0f, 0.0f), /* base */
                   };
             Arrow = Lathe.Make
@@ -59,7 +66,8 @@ public class VectorView extends android.opengl.GLSurfaceView
                         new GeomBuilder.Vec3f(0.0f, 1.0f, 0.0f),
                         new GeomBuilder.Vec3f(HeadThickness, 1.0f - HeadLengthOuter, 0.0f),
                         new GeomBuilder.Vec3f(BodyThickness, 1.0f - HeadLengthInner, 0.0f),
-                        new GeomBuilder.Vec3f(BodyThickness, -1.0f, 0.0f),
+                        new GeomBuilder.Vec3f(BodyThickness, BaseBevel - 1.0f, 0.0f),
+                        new GeomBuilder.Vec3f(BodyThickness - BaseBevel, -1.0f, 0.0f),
                         new GeomBuilder.Vec3f(0.0f, -1.0f, 0.0f),
                       },
                 /*Normal =*/

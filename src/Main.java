@@ -81,7 +81,7 @@ public class Main extends android.app.Activity
                         final java.io.PrintStream Msg = new java.io.PrintStream(MessageBuf);
                         Msg.printf
                           (
-                            "Sensor event at %.9f accuracy %d\nValues(%d): (",
+                            "Sensor event at %.6f accuracy %d\nValues(%d): (",
                             Event.timestamp / Math.pow(10.0d, 9),
                             Event.accuracy,
                             Event.values.length
@@ -92,7 +92,7 @@ public class Main extends android.app.Activity
                               {
                                 Msg.print(", ");
                               } /*if*/
-                            Msg.printf("%.6f°", Event.values[i]);
+                            Msg.printf("%.0f°", Event.values[i]);
                           } /*for*/
                         Msg.print(")\n");
                         Msg.flush();

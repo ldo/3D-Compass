@@ -34,33 +34,7 @@ public class VectorView extends android.opengl.GLSurfaceView
             final float HeadThickness = 0.3f;
             final float HeadLengthOuter = 0.7f;
             final float HeadLengthInner = 0.4f;
-            final int NrSegments = 12;
-            final GeomBuilder.Vec3f BaseNormal = new GeomBuilder.Vec3f(0.0f, -1.0f, 0.0f);
-            final GeomBuilder Geom = new GeomBuilder
-              (
-                /*GotNormals =*/ true,
-                /*GotTexCoords =*/ false,
-                /*GotColors =*/ false
-              );
-            final int Base = Geom.Add(new GeomBuilder.Vec3f(0.0f, -1.0f, 0.0f), BaseNormal, null, null);
-          /* note point positions may be duplicates, but their normals
-            are different to ensure proper lighting */
-            int
-                PrevTip = -1,
-                PrevHead1 = -1,
-                PrevHead2 = -1,
-                PrevBodyTop1 = -1,
-                PrevBodyTop2 = -1,
-                PrevBodyBottom1 = -1,
-                PrevBodyBottom2 = -1;
-            int
-                FirstTip = -1,
-                FirstHead1 = -1,
-                FirstHead2 = -1,
-                FirstBodyTop1 = -1,
-                FirstBodyTop2 = -1,
-                FirstBodyBottom1 = -1,
-                FirstBodyBottom2 = -1;
+            final int NrSectors = 12;
             final float OuterTiltCos =
                 HeadThickness / (float)Math.hypot(HeadThickness, HeadLengthOuter);
             final float OuterTiltSin =
@@ -69,93 +43,55 @@ public class VectorView extends android.opengl.GLSurfaceView
                 HeadThickness / (float)Math.hypot(HeadThickness, HeadLengthInner);
             final float InnerTiltSin =
                 HeadLengthInner / (float)Math.hypot(HeadThickness, HeadLengthInner);
-            for (int i = 0;;)
-              {
-                final int
-                    ThisTip,
-                    ThisHead1,
-                    ThisHead2,
-                    ThisBodyTop1,
-                    ThisBodyTop2,
-                    ThisBodyBottom1,
-                    ThisBodyBottom2;
-                if (i < NrSegments)
+            final GeomBuilder.Vec3f[] Normals =
+                new GeomBuilder.Vec3f[]
                   {
-                    final float Angle = (float)(2.0 * Math.PI * i / NrSegments);
-                    final float Cos = android.util.FloatMath.cos(Angle);
-                    final float Sin = android.util.FloatMath.sin(Angle);
-                    final float FaceAngle =
-                        (float)(2.0 * Math.PI * (2 * i - 1) / (2 * NrSegments));
-                    final float FaceCos = android.util.FloatMath.cos(FaceAngle);
-                    final float FaceSin = android.util.FloatMath.sin(FaceAngle);
-                    final GeomBuilder.Vec3f TipNormal =
-                        new GeomBuilder.Vec3f
+                    new GeomBuilder.Vec3f(OuterTiltSin, OuterTiltCos, 0.0f), /* tip */
+                    new GeomBuilder.Vec3f(InnerTiltSin, - InnerTiltCos, 0.0f), /* head */
+                    new GeomBuilder.Vec3f(1.0f, 0.0f, 0.0f), /* body */
+                    new GeomBuilder.Vec3f(0.0f, -1.0f, 0.0f), /* base */
+                  };
+            Arrow = Lathe.Make
+              (
+                /*Points =*/
+                    new GeomBuilder.Vec3f[]
+                      {
+                        new GeomBuilder.Vec3f(0.0f, 1.0f, 0.0f),
+                        new GeomBuilder.Vec3f(HeadThickness, 1.0f - HeadLengthOuter, 0.0f),
+                        new GeomBuilder.Vec3f(BodyThickness, 1.0f - HeadLengthInner, 0.0f),
+                        new GeomBuilder.Vec3f(BodyThickness, -1.0f, 0.0f),
+                        new GeomBuilder.Vec3f(0.0f, -1.0f, 0.0f),
+                      },
+                /*Normal =*/
+                    new Lathe.VectorFunc()
+                      {
+                        public GeomBuilder.Vec3f Get
                           (
-                            FaceCos * OuterTiltSin,
-                            OuterTiltCos,
-                            FaceSin * OuterTiltSin
-                          );
-                    final GeomBuilder.Vec3f HeadNormal =
-                        new GeomBuilder.Vec3f
-                          (
-                            - FaceCos * InnerTiltSin,
-                            - InnerTiltCos,
-                            - FaceSin * InnerTiltSin
-                          );
-                    final GeomBuilder.Vec3f BodyNormal = new GeomBuilder.Vec3f(FaceCos, 0.0f, FaceSin);
-                    ThisTip = Geom.Add(new GeomBuilder.Vec3f(0.0f, 1.0f, 0.0f), TipNormal, null, null);
-                    final GeomBuilder.Vec3f HeadPoint =
-                        new GeomBuilder.Vec3f(HeadThickness * Cos, 1.0f - HeadLengthOuter, HeadThickness * Sin);
-                    ThisHead1 = Geom.Add(HeadPoint, TipNormal, null, null);
-                    ThisHead2 = Geom.Add(HeadPoint, HeadNormal, null, null);
-                    final GeomBuilder.Vec3f BodyTopPoint =
-                        new GeomBuilder.Vec3f(BodyThickness * Cos, 1.0f - HeadLengthInner, BodyThickness * Sin);
-                    ThisBodyTop1 = Geom.Add(BodyTopPoint, HeadNormal, null, null);
-                    ThisBodyTop2 = Geom.Add(BodyTopPoint, BodyNormal, null, null);
-                    final GeomBuilder.Vec3f BodyBottomPoint =
-                        new GeomBuilder.Vec3f(BodyThickness * Cos, -1.0f, BodyThickness * Sin);
-                    ThisBodyBottom1 = Geom.Add(BodyBottomPoint, BodyNormal, null, null);
-                    ThisBodyBottom2 = Geom.Add(BodyBottomPoint, BaseNormal, null, null);
-                  }
-                else
-                  {
-                    ThisTip = FirstTip;
-                    ThisHead1 = FirstHead1;
-                    ThisHead2 = FirstHead2;
-                    ThisBodyTop1 = FirstBodyTop1;
-                    ThisBodyTop2 = FirstBodyTop2;
-                    ThisBodyBottom1 = FirstBodyBottom1;
-                    ThisBodyBottom2 = FirstBodyBottom2;
-                  } /*if*/
-                if (i != 0)
-                  {
-                    Geom.AddTri(PrevHead1, ThisTip, ThisHead1);
-                    Geom.AddQuad(PrevBodyTop1, PrevHead2, ThisHead2, ThisBodyTop1);
-                    Geom.AddQuad(PrevBodyBottom1, PrevBodyTop2, ThisBodyTop2, ThisBodyBottom1);
-                    Geom.AddTri(PrevBodyBottom2, ThisBodyBottom2, Base);
-                  }
-                else
-                  {
-                    FirstTip = ThisTip;
-                    FirstHead1 = ThisHead1;
-                    FirstHead2 = ThisHead2;
-                    FirstBodyTop1 = ThisBodyTop1;
-                    FirstBodyTop2 = ThisBodyTop2;
-                    FirstBodyBottom1 = ThisBodyBottom1;
-                    FirstBodyBottom2 = ThisBodyBottom2;
-                  } /*if*/
-                PrevTip = ThisTip;
-                PrevHead1 = ThisHead1;
-                PrevHead2 = ThisHead2;
-                PrevBodyTop1 = ThisBodyTop1;
-                PrevBodyTop2 = ThisBodyTop2;
-                PrevBodyBottom1 = ThisBodyBottom1;
-                PrevBodyBottom2 = ThisBodyBottom2;
-                if (i == NrSegments)
-                    break;
-                ++i;
-              } /*for*/
-            Arrow = Geom.MakeObj();
+                            int PointIndex, /* into Points array */
+                            int SectorIndex, /* 0 .. NrSectors - 1 */
+                            boolean Upper
+                              /* indicates which of two calls for each point (except for
+                                start and end points, which only get one call each) to allow
+                                for discontiguous shading */
+                          )
+                          {
+                            final float FaceAngle =
+                                (float)(2.0 * Math.PI * (2 * SectorIndex - 1) / (2 * NrSectors));
+                            final GeomBuilder.Vec3f OrigNormal =
+                                Normals[PointIndex - (Upper ? 0 : 1)];
+                            return
+                                new GeomBuilder.Vec3f
+                                  (
+                                    OrigNormal.x * android.util.FloatMath.cos(FaceAngle),
+                                    OrigNormal.y,
+                                    OrigNormal.x * android.util.FloatMath.sin(FaceAngle)
+                                  );
+                          } /*Get*/
+                      } /*VectorFunc*/,
+                /*TexCoord = */ null,
+                /*VertexColor =*/ null,
+                /*NrSectors =*/ NrSectors
+              );
           } /*VectorViewRenderer*/
 
         public void onDrawFrame

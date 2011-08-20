@@ -67,7 +67,9 @@ public class VectorView extends android.opengl.GLSurfaceView
                         new GeomBuilder.Vec3f(HeadThickness, 1.0f - HeadLengthOuter, 0.0f),
                         new GeomBuilder.Vec3f(BodyThickness, 1.0f - HeadLengthInner, 0.0f),
                         new GeomBuilder.Vec3f(BodyThickness, BaseBevel - 1.0f, 0.0f),
-                        new GeomBuilder.Vec3f(BodyThickness - BaseBevel, -1.0f, 0.0f),
+                        new GeomBuilder.Vec3f(BodyThickness - BaseBevel, -0.98f, 0.0f),
+                          /* y-coord of -1.0 seems to produce gaps in rendering when base
+                            is face-on to viewer */
                         new GeomBuilder.Vec3f(0.0f, -1.0f, 0.0f),
                       },
                 /*Normal =*/

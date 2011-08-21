@@ -86,7 +86,7 @@ public class VectorView extends android.opengl.GLSurfaceView
                           )
                           {
                             final float FaceAngle =
-                                (float)(2.0 * Math.PI * (2 * SectorIndex - 1) / (2 * NrSectors));
+                                (float)(2.0 * Math.PI * SectorIndex / NrSectors);
                             final GeomBuilder.Vec3f OrigNormal =
                                 Normals[PointIndex - (Upper ? 0 : 1)];
                             return

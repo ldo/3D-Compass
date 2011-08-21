@@ -20,12 +20,19 @@ package nz.gen.geek_central.GLUseful;
 
 public class Lathe
   {
+    public interface VertexFunc
+      {
+        public GeomBuilder.Vec3f Get
+          (
+            int PointIndex
+          );
+      }
 
     public interface VectorFunc
       {
         public GeomBuilder.Vec3f Get
           (
-            int PointIndex, /* into Points array */
+            int PointIndex,
             int SectorIndex, /* 0 .. NrSectors - 1 */
             boolean Upper
               /* indicates which of two calls for each point (except for
@@ -38,7 +45,7 @@ public class Lathe
       {
         public GeomBuilder.Color Get
           (
-            int PointIndex, /* into Points array */
+            int PointIndex,
             int SectorIndex, /* 0 .. NrSectors - 1 */
             boolean Upper
               /* indicates which of two calls for each point (except for
@@ -49,11 +56,12 @@ public class Lathe
 
     public static GeomBuilder.Obj Make
       (
-        GeomBuilder.Vec3f[] Points,
-          /* outline of object, must be at least 3 points, all Z coords must be
+        VertexFunc Point,
+          /* returns outline of object, must be at least 3 points, all Z coords must be
             zero, all X coords non-negative, and X coord of first and last point
             must be zero. Order the points by decreasing Y coord if you want
             anticlockwise face vertex ordering, or increasing if you want clockwise. */
+        int NrPoints, /* valid values for arg to Point.Get are [0 .. NrPoints - 1] */
         VectorFunc Normal, /* optional to compute normal vector at each point */
         VectorFunc TexCoord, /* optional to compute texture coordinate at each point */
         ColorFunc VertexColor, /* optional to compute colour at each point */
@@ -70,10 +78,10 @@ public class Lathe
             /*GotTexCoords =*/ TexCoord != null,
             /*GotColors =*/ VertexColor != null
           );
-        final int[] PrevInds = new int[Points.length * 2 - 2];
-        final int[] FirstInds = new int[Points.length * 2 - 2];
-        final int[] TheseInds = new int[Points.length * 2 - 2];
-        final GeomBuilder.Vec3f[] ThesePoints = new GeomBuilder.Vec3f[Points.length * 2 - 2];
+        final int[] PrevInds = new int[NrPoints * 2 - 2];
+        final int[] FirstInds = new int[NrPoints * 2 - 2];
+        final int[] TheseInds = new int[NrPoints * 2 - 2];
+        final GeomBuilder.Vec3f[] ThesePoints = new GeomBuilder.Vec3f[NrPoints * 2 - 2];
         for (int i = 0;;)
           {
             if (i < NrSectors)
@@ -81,15 +89,16 @@ public class Lathe
                 final float Angle = (float)(2.0 * Math.PI * i / NrSectors);
                 final float Cos = android.util.FloatMath.cos(Angle);
                 final float Sin = android.util.FloatMath.sin(Angle);
-                for (int j = 0; j < Points.length; ++j)
+                for (int j = 0; j < NrPoints; ++j)
                   {
+                    final GeomBuilder.Vec3f Vertex = Point.Get(j);
                     final GeomBuilder.Vec3f ThisPoint = new GeomBuilder.Vec3f
                       (
-                        Points[j].x * Cos,
-                        Points[j].y,
-                        Points[j].x * Sin
+                        Vertex.x * Cos,
+                        Vertex.y,
+                        Vertex.x * Sin
                       );
-                    if (j < Points.length - 1)
+                    if (j < NrPoints - 1)
                       {
                         final GeomBuilder.Vec3f ThisNormal =
                             Normal != null ?
@@ -141,7 +150,7 @@ public class Lathe
             if (i != 0)
               {
                 Geom.AddTri(PrevInds[1], TheseInds[0], TheseInds[1]);
-                for (int j = 1; j < Points.length - 1; ++j)
+                for (int j = 1; j < NrPoints - 1; ++j)
                   {
                     Geom.AddQuad
                       (

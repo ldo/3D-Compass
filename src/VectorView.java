@@ -46,6 +46,18 @@ public class VectorView extends android.opengl.GLSurfaceView
                 HeadThickness / (float)Math.hypot(HeadThickness, HeadLengthInner);
             final float InnerTiltSin =
                 HeadLengthInner / (float)Math.hypot(HeadThickness, HeadLengthInner);
+            final GeomBuilder.Vec3f[] Points =
+                new GeomBuilder.Vec3f[]
+                  {
+                    new GeomBuilder.Vec3f(0.0f, 1.0f, 0.0f),
+                    new GeomBuilder.Vec3f(HeadThickness, 1.0f - HeadLengthOuter, 0.0f),
+                    new GeomBuilder.Vec3f(BodyThickness, 1.0f - HeadLengthInner, 0.0f),
+                    new GeomBuilder.Vec3f(BodyThickness, BaseBevel - 1.0f, 0.0f),
+                    new GeomBuilder.Vec3f(BodyThickness - BaseBevel, -0.98f, 0.0f),
+                      /* y-coord of -1.0 seems to produce gaps in rendering when base
+                        is face-on to viewer */
+                    new GeomBuilder.Vec3f(0.0f, -1.0f, 0.0f),
+                  };
             final GeomBuilder.Vec3f[] Normals =
                 new GeomBuilder.Vec3f[]
                   {
@@ -63,23 +75,24 @@ public class VectorView extends android.opengl.GLSurfaceView
             Arrow = Lathe.Make
               (
                 /*Points =*/
-                    new GeomBuilder.Vec3f[]
+                    new Lathe.VertexFunc()
                       {
-                        new GeomBuilder.Vec3f(0.0f, 1.0f, 0.0f),
-                        new GeomBuilder.Vec3f(HeadThickness, 1.0f - HeadLengthOuter, 0.0f),
-                        new GeomBuilder.Vec3f(BodyThickness, 1.0f - HeadLengthInner, 0.0f),
-                        new GeomBuilder.Vec3f(BodyThickness, BaseBevel - 1.0f, 0.0f),
-                        new GeomBuilder.Vec3f(BodyThickness - BaseBevel, -0.98f, 0.0f),
-                          /* y-coord of -1.0 seems to produce gaps in rendering when base
-                            is face-on to viewer */
-                        new GeomBuilder.Vec3f(0.0f, -1.0f, 0.0f),
-                      },
+                        public GeomBuilder.Vec3f Get
+                          (
+                            int PointIndex
+                          )
+                          {
+                            return
+                                Points[PointIndex];
+                          } /*Get*/
+                      } /*VertexFunc*/,
+                /*NrPoints = */ Points.length,
                 /*Normal =*/
                     new Lathe.VectorFunc()
                       {
                         public GeomBuilder.Vec3f Get
                           (
-                            int PointIndex, /* into Points array */
+                            int PointIndex,
                             int SectorIndex, /* 0 .. NrSectors - 1 */
                             boolean Upper
                               /* indicates which of two calls for each point (except for

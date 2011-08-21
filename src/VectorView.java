@@ -18,6 +18,8 @@ package nz.gen.geek_central.Compass3D;
 */
 
 import javax.microedition.khronos.opengles.GL10;
+import nz.gen.geek_central.GLUseful.GeomBuilder;
+import nz.gen.geek_central.GLUseful.Lathe;
 
 public class VectorView extends android.opengl.GLSurfaceView
   {

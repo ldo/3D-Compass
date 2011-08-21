@@ -1,4 +1,4 @@
-package nz.gen.geek_central.Compass3D;
+package nz.gen.geek_central.GLUseful;
 /*
     Easy construction and application of buffers needed for
     OpenGL-ES drawing.

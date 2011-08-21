@@ -1,4 +1,4 @@
-package nz.gen.geek_central.Compass3D;
+package nz.gen.geek_central.GLUseful;
 /*
     Easy construction of objects with a single axis of rotational symmetry,
     building on GeomBuilder.

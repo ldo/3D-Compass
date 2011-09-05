@@ -112,6 +112,7 @@ public class Main extends android.app.Activity
     public void onPause()
       {
         super.onPause();
+        Graphical.onPause();
         ClearListener(); /* conserve battery */
       } /*onPause*/
 
@@ -119,6 +120,7 @@ public class Main extends android.app.Activity
     public void onResume()
       {
         super.onResume();
+        Graphical.onResume();
         InstallListener();
       } /*onResume*/
 

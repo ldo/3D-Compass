@@ -33,7 +33,7 @@ public class CameraUseful
         return
                 Width * Height
             +
-                ((Width + 1) / 2) * ((Height + 1) / 2);
+                ((Width + 1) / 2) * ((Height + 1) / 2) * 2;
       } /*NV21DataSize*/
 
     public static void DecodeNV21

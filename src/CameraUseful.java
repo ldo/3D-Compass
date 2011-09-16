@@ -179,4 +179,45 @@ public class CameraUseful
             new android.graphics.Point(BestSize.width, BestSize.height);
       } /*GetSmallestPreviewSizeAtLeast*/
 
+    public static android.graphics.Point GetLargestPreviewSizeAtMost
+      (
+        Camera TheCamera,
+        int MaxWidth,
+        int MaxHeight
+      )
+      /* returns largest supported preview size which is of at most
+        the given dimensions. */
+      {
+        Camera.Size BestSize = null;
+        for
+          (
+            Camera.Size ThisSize : TheCamera.getParameters().getSupportedPreviewSizes()
+          )
+          {
+            if (ThisSize.width <= MaxWidth && ThisSize.height <= MaxHeight)
+              {
+                if
+                  (
+                        BestSize == null
+                    ||
+                        BestSize.width < ThisSize.width
+                    ||
+                        BestSize.height < ThisSize.height
+                  )
+                  {
+                    BestSize = ThisSize;
+                  } /*if*/
+              } /*if*/
+          } /*for*/
+        if (BestSize == null)
+          {
+          /* none big enough, pick last, which seems to be smallest */
+            final java.util.List<Camera.Size> PreviewSizes =
+                TheCamera.getParameters().getSupportedPreviewSizes();
+            BestSize = PreviewSizes.get(PreviewSizes.size() - 1);
+          } /*if*/
+        return
+            new android.graphics.Point(BestSize.width, BestSize.height);
+      } /*GetLargestPreviewSizeAtMost*/
+
   } /*CameraUseful*/

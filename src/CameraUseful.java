@@ -17,6 +17,8 @@ package nz.gen.geek_central.Compass3D;
     the License.
 */
 
+import android.hardware.Camera;
+
 public class CameraUseful
   {
 
@@ -138,20 +140,88 @@ public class CameraUseful
           } /*for*/
       } /*DecodeNV21*/
 
+    public static Camera.CameraInfo GetCameraInfo
+      (
+        int CameraID
+      )
+      /* allocates and fills in a Camera.CameraInfo object for
+        the specified camera. */
+      {
+        final Camera.CameraInfo Result = new Camera.CameraInfo();
+        Camera.getCameraInfo(CameraID, Result);
+        return
+            Result;
+      } /*GetCameraInfo*/
+
+    public static int FirstCamera
+      (
+        boolean FrontFacing /* false for rear-facing */
+      )
+      /* returns the ID of the first camera with the specified Facing value
+        in its CameraInfo. */
+      {
+        int Result = -1;
+        for (int i = 0;;)
+          {
+            if (i == Camera.getNumberOfCameras())
+                break;
+            if
+              (
+                    GetCameraInfo(i).facing
+                ==
+                    (FrontFacing ?
+                        Camera.CameraInfo.CAMERA_FACING_FRONT
+                    :
+                        Camera.CameraInfo.CAMERA_FACING_BACK
+                    )
+              )
+              {
+                Result = i;
+                break;
+              } /*if*/
+            ++i;
+          } /*for*/
+        return
+            Result;
+      } /*FirstCamera*/
+
+    public static int RightOrientation
+      (
+        android.app.Activity DisplayActivity,
+        int CameraID
+      )
+      /* returns the value to pass to setOrientation for an instance
+        of the specified camera so image will be right way up when
+        displayed according to the screen orientation of DisplayActivity. */
+      {
+        final Camera.CameraInfo Info = GetCameraInfo(CameraID);
+        return
+                (
+                    DisplayActivity.getWindowManager().getDefaultDisplay().getRotation() * -90
+                +
+                        (Info.facing == Camera.CameraInfo.CAMERA_FACING_BACK ? 1 : -1)
+                    *
+                        Info.orientation
+                +
+                    360
+                )
+            %
+                360;
+      } /*RightOrientation*/
+
     public static android.graphics.Point GetSmallestPreviewSizeAtLeast
       (
-        android.hardware.Camera TheCamera,
+        Camera TheCamera,
         int MinWidth,
         int MinHeight
       )
       /* returns smallest supported preview size which is of at least
         the given dimensions. */
       {
-        android.hardware.Camera.Size BestSize = null;
+        Camera.Size BestSize = null;
         for
           (
-            android.hardware.Camera.Size ThisSize :
-                TheCamera.getParameters().getSupportedPreviewSizes()
+            Camera.Size ThisSize : TheCamera.getParameters().getSupportedPreviewSizes()
           )
           {
             if (ThisSize.width >= MinWidth && ThisSize.height >= MinHeight)

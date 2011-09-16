@@ -29,6 +29,7 @@ public class Main extends android.app.Activity
     android.hardware.SensorManager SensorMan;
     android.hardware.Sensor Compass = null;
     CommonListener Listen;
+    int TheCameraID;
     android.hardware.Camera TheCamera;
     final long[] FrameTimes = new long[25];
     int NextFrameTime = 0;
@@ -69,20 +70,12 @@ public class Main extends android.app.Activity
 
     void StartCamera()
       {
-        TheCamera = android.hardware.Camera.open();
+        if (TheCameraID >= 0)
+          {
+            TheCamera = android.hardware.Camera.open(TheCameraID);
+          } /*if*/
         if (TheCamera != null)
           {
-            System.err.print("camera_try: camera supported preview formats: ");
-            boolean First = true;
-            for (int i : TheCamera.getParameters().getSupportedPreviewFormats())
-              {
-                if (!First)
-                  {
-                    System.err.print(", ");
-                  } /*if*/
-                System.err.print(i);
-              } /*for*/
-            System.err.println();
             if (Listen != null)
               {
                 Listen.StartCamera();
@@ -331,7 +324,9 @@ public class Main extends android.app.Activity
               );
             if (TheCamera != null)
               {
+                TheCamera.setDisplayOrientation(CameraUseful.RightOrientation(Main.this, TheCameraID));
                 PreviewSize = CameraUseful.GetSmallestPreviewSizeAtLeast(TheCamera, Width, Height);
+                System.err.printf("Setting preview size to %d*%d (at least %d*%d)\n", PreviewSize.x, PreviewSize.y, Width, Height);
                 final android.hardware.Camera.Parameters Parms = TheCamera.getParameters();
                 Parms.setPreviewSize(PreviewSize.x, PreviewSize.y);
                 TheCamera.setParameters(Parms);
@@ -377,6 +372,16 @@ public class Main extends android.app.Activity
         if (Compass == null)
           {
             MessageView.setText("No compass hardware present");
+          } /*if*/
+        TheCameraID = CameraUseful.FirstCamera(false); /* debug */
+        if (TheCameraID < 0)
+          {
+            android.widget.Toast.makeText
+              (
+                /*context =*/ this,
+                /*text =*/ "No backward-facing camera present",
+                /*duration =*/ android.widget.Toast.LENGTH_LONG
+              ).show();
           } /*if*/
         Listen = new CommonListener();
         Graphical.getHolder().addCallback(Listen);

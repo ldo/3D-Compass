@@ -152,18 +152,18 @@ public class Main extends android.app.Activity
                   /* initialize all pixels to fully transparent */
                 if (ImageBuf != null)
                   {
-                    Display.drawBitmap
+                    final android.graphics.Bitmap ImageBits = android.graphics.Bitmap.createBitmap
                       (
                         /*colors =*/ ImageBuf,
-                        /*offset =*/ 0,
-                        /*stride =*/ PreviewSize.x,
-                        /*x =*/ 0.0f,
-                        /*y =*/ 0.0f,
                         /*width =*/ PreviewSize.x,
                         /*height =*/ PreviewSize.y,
-                        /*hasAlpha =*/ true,
-                        /*paint =*/ null
+                        /*config =*/ android.graphics.Bitmap.Config.ARGB_8888
                       );
+                    final android.graphics.Matrix Rotate = new android.graphics.Matrix();
+                  /* fixme: how do I figure out right rotation angle for different
+                    situations at API level 7? */
+                    Rotate.postRotate(90, PreviewSize.x / 2.0f, PreviewSize.y / 2.0f);
+                    Display.drawBitmap(ImageBits, Rotate, null);
                   } /*if*/
                 if (GLContext != null)
                   {
@@ -320,6 +320,11 @@ public class Main extends android.app.Activity
               );
             if (TheCamera != null)
               {
+                System.err.printf
+                  (
+                    "My activity orientation is %d\n",
+                    Main.this.getWindowManager().getDefaultDisplay().getOrientation()
+                  );
                 PreviewSize = CameraUseful.GetSmallestPreviewSizeAtLeast(TheCamera, Width, Height);
                 System.err.printf("Setting preview size to %d*%d (at least %d*%d)\n", PreviewSize.x, PreviewSize.y, Width, Height);
                 final android.hardware.Camera.Parameters Parms = TheCamera.getParameters();

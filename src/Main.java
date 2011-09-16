@@ -122,6 +122,11 @@ public class Main extends android.app.Activity
               } /*if*/
           } /*Release*/
 
+        public void Finish()
+          {
+            EGLUseful.EGL.eglTerminate(Display);
+          } /*Finish*/
+
         public void StartCamera()
           {
             if (TheCamera != null && ImageBuf != null)
@@ -378,15 +383,25 @@ public class Main extends android.app.Activity
       } /*onCreate*/
 
     @Override
+    public void onDestroy()
+      {
+        if (Listen != null)
+          {
+            Listen.Finish();
+          } /*if*/
+        super.onDestroy();
+      } /*onDestroy*/
+
+    @Override
     public void onPause()
       {
-        super.onPause();
         StopCompass();
         StopCamera();
         if (Listen != null)
           {
             Listen.Release();
           } /*if*/
+        super.onPause();
       } /*onPause*/
 
     @Override

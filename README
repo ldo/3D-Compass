@@ -1,7 +1,15 @@
 3D compass is a sample Android application showing how to use a
 SurfaceView to display a dynamically-updated 3D arrow with OpenGL that
 takes its direction from the orientation sensor, composited on top of
-a live camera preview image.
+a live camera preview image, including the following utility classes:
+  * CameraUseful: some routines for managing the camera and decoding
+    image data
+  * EGLUseful: management of EGL context and doing offscreen OpenGL
+    rendering using pbuffers
+  * GeomBuilder: basic management of 3D object geometry and rendering
+  * Lathe: uses GeomBuilder to construct objects with rotational symmetry
+  * Compass: how to use the orientation sensor data to draw a 3D
+    compass arrow
 
 Note that the compass direction is sometimes inaccurate--at least, on
 my HTC Desire it is. However, turning the phone this way and that will

@@ -157,18 +157,18 @@ public class Main extends android.app.Activity
                   /* initialize all pixels to fully transparent */
                 if (ImageBuf != null)
                   {
-                    final android.graphics.Bitmap ImageBits = android.graphics.Bitmap.createBitmap
+                    Display.drawBitmap
                       (
                         /*colors =*/ ImageBuf,
-                        /*width =*/ PreviewSize.x,
-                        /*height =*/ PreviewSize.y,
-                        /*config =*/ android.graphics.Bitmap.Config.ARGB_8888
+                        /*offset =*/ 0,
+                        /*stride =*/ PreviewSize.y, /* 90° rotated, remember */
+                        /*x =*/ 0,
+                        /*y =*/ 0,
+                        /*width =*/ PreviewSize.y,
+                        /*height =*/ PreviewSize.x,
+                        /*hasAlpha =*/ true,
+                        /*paint =*/ null
                       );
-                    final android.graphics.Matrix Rotate = new android.graphics.Matrix();
-                  /* fixme: how do I figure out right rotation angle for different
-                    situations at API level 7? */
-                    Rotate.postRotate(90, PreviewSize.x / 2.0f, PreviewSize.y / 2.0f);
-                    Display.drawBitmap(ImageBits, Rotate, null);
                   } /*if*/
                 if (GLContext != null)
                   {
@@ -278,7 +278,17 @@ public class Main extends android.app.Activity
                         FrameTimes[NextFrameTime]
                     )
               );
-            CameraUseful.DecodeNV21(PreviewSize.x, PreviewSize.y, Data, 255, ImageBuf);
+            CameraUseful.DecodeNV21
+              (
+                /*SrcWidth =*/ PreviewSize.x,
+                /*SrcHeight =*/ PreviewSize.y,
+                /*Data =*/ Data,
+                /*Rotate =*/ 1,
+                  /* fixme: how do I figure out right rotation angle for different
+                    situations at API level 7? */
+                /*Alpha =*/ 255,
+                /*Pixels =*/ ImageBuf
+              );
             Draw();
           } /*onPreviewFrame*/
 

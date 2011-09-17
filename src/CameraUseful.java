@@ -38,31 +38,55 @@ public class CameraUseful
 
     public static void DecodeNV21
       (
-        int Width,
-        int Height,
-        byte[] Data, /* length = NV21DataSize(Width, Height) */
-        int Alpha,
+        int SrcWidth, /* dimensions of image before rotation */
+        int SrcHeight,
+        byte[] Data, /* length = NV21DataSize(SrcWidth, SrcHeight) */
+        int Rotate, /* [0 .. 3], angle is 90° * Rotate clockwise */
+        int Alpha, /* set as alpha for all decoded pixels */
         int[] Pixels /* length = Width * Height */
       )
       /* decodes NV21-encoded image data, which is the default camera preview image format. */
       {
         final int AlphaMask = Alpha << 24;
+      /* Rotation involves accessing either the source or destination pixels in a
+        non-sequential fashion. Since the source is smaller, I figure it's less
+        cache-unfriendly to go jumping around that. */
+        final int DstWidth = (Rotate & 1) != 0 ? SrcHeight : SrcWidth;
+        final int DstHeight = (Rotate & 1) != 0 ? SrcWidth : SrcHeight;
+        final boolean DecrementRow = Rotate > 1;
+        final boolean DecrementCol = Rotate == 1 || Rotate == 2;
+        final int LumaRowStride = (Rotate & 1) != 0 ? 1 : SrcWidth;
+        final int LumaColStride = (Rotate & 1) != 0 ? SrcWidth : 1;
+        final int ChromaRowStride = (Rotate & 1) != 0 ? 2 : SrcWidth;
+        final int ChromaColStride = (Rotate & 1) != 0 ? SrcWidth : 2;
         int dst = 0;
-        for (int row = 0; row < Height; ++row)
+        for (int row = DecrementRow ? DstHeight : 0;;)
           {
-            for (int col = 0; col < Width; ++col)
+            if (row == (DecrementRow ? 0 : DstHeight))
+                break;
+            if (DecrementRow)
               {
-                final int Y = 0xff & (int)Data[row * Width + col]; /* [0 .. 255] */
+                --row;
+              } /*if*/
+            for (int col = DecrementCol ? DstWidth : 0;;)
+              {
+                if (col == (DecrementCol ? 0 : DstWidth))
+                    break;
+                if (DecrementCol)
+                  {
+                    --col;
+                  } /*if*/
+                final int Y = 0xff & (int)Data[row * LumaRowStride + col * LumaColStride]; /* [0 .. 255] */
               /* U/V data follows entire luminance block, downsampled to half luminance
                 resolution both horizontally and vertically */
               /* decoding follows algorithm shown at
                 <http://www.mail-archive.com/android-developers@googlegroups.com/msg14558.html>,
                 except it gets red and blue the wrong way round */
                 final int Cr =
-                    (0xff & (int)Data[Height * Width + row / 2 * Width + col / 2 * 2]) - 128;
+                    (0xff & (int)Data[SrcHeight * SrcWidth + row / 2 * ChromaRowStride + col / 2 * ChromaColStride]) - 128;
                       /* [-128 .. +127] */
                 final int Cb =
-                    (0xff & (int)Data[Height * Width + row / 2 * Width + col / 2 * 2 + 1]) - 128;
+                    (0xff & (int)Data[SrcHeight * SrcWidth + row / 2 * ChromaRowStride + col / 2 * ChromaColStride + 1]) - 128;
                       /* [-128 .. +127] */
                 Pixels[dst++] =
                         AlphaMask
@@ -136,7 +160,15 @@ public class CameraUseful
                               ),
                             0
                           ); /* blue */
+                if (!DecrementCol)
+                  {
+                    ++col;
+                  } /*if*/
               } /*for*/
+            if (!DecrementRow)
+              {
+                ++row;
+              } /*if*/
           } /*for*/
       } /*DecodeNV21*/
 

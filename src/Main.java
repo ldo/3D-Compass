@@ -216,6 +216,8 @@ public class Main extends android.app.Activity
           /* ignore for now */
           } /*onAccuracyChanged*/
 
+        private long LastSensorUpdate = 0;
+
         public void onSensorChanged
           (
             android.hardware.SensorEvent Event
@@ -244,7 +246,14 @@ public class Main extends android.app.Activity
             Azi = Event.values[0];
             Elev = Event.values[1];
             Roll = Event.values[2];
-            Draw();
+            final long Now = System.currentTimeMillis();
+            if (Now - LastSensorUpdate >= 250)
+              /* throttle sensor updates because they seem to cause contention
+                with camera preview updates */
+              {
+                LastSensorUpdate = Now;
+                Draw();
+              } /*if*/
           } /*onSensorChanged*/
 
       /* Camera.PreviewCallback methods: */

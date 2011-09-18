@@ -24,7 +24,7 @@ import java.nio.ByteBuffer;
 
 public class Main extends android.app.Activity
   {
-    android.widget.TextView MessageView;
+    android.widget.TextView Message1View, Message2View;
     android.view.SurfaceView Graphical;
     android.hardware.SensorManager SensorMan;
     android.hardware.Sensor Compass = null;
@@ -79,12 +79,7 @@ public class Main extends android.app.Activity
           }
         else
           {
-            android.widget.Toast.makeText
-              (
-                /*context =*/ this,
-                /*text =*/ "Failed to open camera",
-                /*duration =*/ android.widget.Toast.LENGTH_LONG
-              ).show();
+            Message2View.setText("Failed to open camera");
           } /*if*/
       } /*StartCamera*/
 
@@ -242,7 +237,7 @@ public class Main extends android.app.Activity
               } /*for*/
             Msg.print(")\n");
             Msg.flush();
-            MessageView.setText(MessageBuf.toString());
+            Message1View.setText(MessageBuf.toString());
             Azi = Event.values[0];
             Elev = Event.values[1];
             Roll = Event.values[2];
@@ -266,18 +261,18 @@ public class Main extends android.app.Activity
           {
             FrameTimes[NextFrameTime] = System.currentTimeMillis();
             NextFrameTime = (NextFrameTime + 1) % FrameTimes.length;
-            System.err.printf
-              (
-                "Got preview frame length %d fps %.2f\n",
-                Data.length,
+            final float FrameRate =
                     FrameTimes.length * 1000f
                 /
                     (
                         FrameTimes[(NextFrameTime + FrameTimes.length - 1) % FrameTimes.length]
                     -
                         FrameTimes[NextFrameTime]
-                    )
-              );
+                    );
+            if (NextFrameTime == 0)
+              {
+                Message2View.setText(String.format("Camera fps %.2f", FrameRate));
+              } /*if*/
             CameraUseful.DecodeNV21
               (
                 /*SrcWidth =*/ PreviewSize.x,
@@ -389,13 +384,14 @@ public class Main extends android.app.Activity
       {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
-        MessageView = (android.widget.TextView)findViewById(R.id.message);
+        Message1View = (android.widget.TextView)findViewById(R.id.message1);
+        Message2View = (android.widget.TextView)findViewById(R.id.message2);
         Graphical = (android.view.SurfaceView)findViewById(R.id.display);
         SensorMan = (android.hardware.SensorManager)getSystemService(SENSOR_SERVICE);
         Compass = SensorMan.getDefaultSensor(android.hardware.Sensor.TYPE_ORIENTATION);
         if (Compass == null)
           {
-            MessageView.setText("No compass hardware present");
+            Message1View.setText("No compass hardware present");
           } /*if*/
         Listen = new CommonListener();
         Graphical.getHolder().addCallback(Listen);

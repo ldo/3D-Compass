@@ -344,7 +344,7 @@ public class Main extends android.app.Activity
                     "My activity orientation is %d\n",
                     Main.this.getWindowManager().getDefaultDisplay().getOrientation()
                   );
-                PreviewSize = CameraUseful.GetSmallestPreviewSizeAtLeast(TheCamera, Width, Height);
+                PreviewSize = CameraUseful.GetLargestPreviewSizeAtMost(TheCamera, Width, Height);
                 System.err.printf("Setting preview size to %d*%d (at most %d*%d)\n", PreviewSize.x, PreviewSize.y, Width, Height);
                 final android.hardware.Camera.Parameters Parms = TheCamera.getParameters();
                 Parms.setPreviewSize(PreviewSize.x, PreviewSize.y);

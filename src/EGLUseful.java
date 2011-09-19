@@ -298,6 +298,9 @@ public class EGLUseful
           } /*Release*/
 
         public GL11 GetGL()
+          /* returns an object you can use to make khronos.openglex method
+            calls. Preferred method seems to be to use static methods in
+            android.opengl.GLESxx instead. */
           {
             return
                 (GL11)Context.getGL();

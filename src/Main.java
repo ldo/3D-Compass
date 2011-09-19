@@ -19,7 +19,7 @@ package nz.gen.geek_central.Compass3D;
 
 import javax.microedition.khronos.egl.EGL10;
 import javax.microedition.khronos.egl.EGLDisplay;
-import javax.microedition.khronos.opengles.GL11;
+import android.opengl.GLES11;
 import java.nio.ByteBuffer;
 
 public class Main extends android.app.Activity
@@ -168,17 +168,16 @@ public class Main extends android.app.Activity
                 if (GLContext != null)
                   {
                     GLContext.SetCurrent();
-                    final GL11 gl = GLContext.GetGL();
-                    Needle.Draw(gl, Azi, Elev, Roll);
-                    gl.glFinish();
-                    gl.glReadPixels
+                    Needle.Draw(Azi, Elev, Roll);
+                    GLES11.glFinish();
+                    GLES11.glReadPixels
                       (
                         /*x =*/ 0,
                         /*y =*/ 0,
                         /*width =*/ GLBits.getWidth(),
                         /*height =*/ GLBits.getHeight(),
-                        /*format =*/ GL11.GL_RGBA,
-                        /*type =*/ GL11.GL_UNSIGNED_BYTE,
+                        /*format =*/ GLES11.GL_RGBA,
+                        /*type =*/ GLES11.GL_UNSIGNED_BYTE,
                         /*pixels =*/ GLPixels
                       );
                     GLContext.ClearCurrent();
@@ -325,7 +324,7 @@ public class Main extends android.app.Activity
                 /*ShareContext =*/ null
               );
             GLContext.SetCurrent();
-            Needle.Setup(GLContext.GetGL(), Width, Height);
+            Needle.Setup(Width, Height);
             GLContext.ClearCurrent();
             GLPixels = ByteBuffer.allocateDirect
               (

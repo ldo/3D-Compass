@@ -17,7 +17,7 @@ package nz.gen.geek_central.Compass3D;
     the License.
 */
 
-import javax.microedition.khronos.opengles.GL11;
+import android.opengl.GLES11;
 import nz.gen.geek_central.GLUseful.GeomBuilder;
 import nz.gen.geek_central.GLUseful.Lathe;
 
@@ -118,21 +118,20 @@ public class Compass
 
     public void Setup
       (
-        GL11 gl,
         int ViewWidth,
         int ViewHeight
       )
       /* initial setup for drawing that doesn't need to be done for every frame. */
       {
-        gl.glEnable(GL11.GL_CULL_FACE);
-        gl.glShadeModel(GL11.GL_SMOOTH);
-        gl.glEnable(GL11.GL_LIGHTING);
-        gl.glEnable(GL11.GL_LIGHT0);
-        gl.glEnable(GL11.GL_DEPTH_TEST);
-        gl.glViewport(0, 0, ViewWidth, ViewHeight);
-        gl.glMatrixMode(GL11.GL_PROJECTION);
-        gl.glLoadIdentity();
-        gl.glFrustumf
+        GLES11.glEnable(GLES11.GL_CULL_FACE);
+        GLES11.glShadeModel(GLES11.GL_SMOOTH);
+        GLES11.glEnable(GLES11.GL_LIGHTING);
+        GLES11.glEnable(GLES11.GL_LIGHT0);
+        GLES11.glEnable(GLES11.GL_DEPTH_TEST);
+        GLES11.glViewport(0, 0, ViewWidth, ViewHeight);
+        GLES11.glMatrixMode(GLES11.GL_PROJECTION);
+        GLES11.glLoadIdentity();
+        GLES11.glFrustumf
           (
             /*l =*/ - (float)ViewWidth / ViewHeight,
             /*r =*/ (float)ViewWidth / ViewHeight,
@@ -145,7 +144,6 @@ public class Compass
 
     public void Draw
       (
-        GL11 gl, /* Setup must already have been called on this */
         float Azi,
           /* always Earth-horizontal, regardless of orientation of phone */
         float Elev,
@@ -156,57 +154,58 @@ public class Compass
             ±90° when it its starts decreasing in magnitude again, so
             0° is when phone is horizontal either face-up or face-down */
       )
-      /* draws the compass arrow in the specified orientation. */
+      /* draws the compass arrow in the specified orientation. Setup must already
+        have been called on current GL context. */
       {
-        gl.glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-        gl.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
-        gl.glMatrixMode(GL11.GL_MODELVIEW);
-        gl.glLoadIdentity();
+        GLES11.glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+        GLES11.glClear(GLES11.GL_COLOR_BUFFER_BIT | GLES11.GL_DEPTH_BUFFER_BIT);
+        GLES11.glMatrixMode(GLES11.GL_MODELVIEW);
+        GLES11.glLoadIdentity();
       /* Note that, by positioning the light _before_ doing all the
         rotate calls, its position is fixed relative to the display,
         not the compass arrow. */
-        gl.glLightfv
+        GLES11.glLightfv
           (
-            /*light =*/ GL11.GL_LIGHT0,
-            /*pname =*/ GL11.GL_POSITION,
+            /*light =*/ GLES11.GL_LIGHT0,
+            /*pname =*/ GLES11.GL_POSITION,
             /*params =*/ new float[] {0.0f, 2.0f, -2.0f, 1.0f},
             /*offset =*/ 0
           );
-        gl.glLightfv
+        GLES11.glLightfv
           (
-            /*light =*/ GL11.GL_LIGHT0,
-            /*pname =*/ GL11.GL_AMBIENT,
+            /*light =*/ GLES11.GL_LIGHT0,
+            /*pname =*/ GLES11.GL_AMBIENT,
             /*params =*/ new float[] {0.4f, 0.4f, 0.4f, 1.0f},
             /*offset =*/ 0
           );
-        gl.glLightfv
+        GLES11.glLightfv
           (
-            /*light =*/ GL11.GL_LIGHT0,
-            /*pname =*/ GL11.GL_SPECULAR,
+            /*light =*/ GLES11.GL_LIGHT0,
+            /*pname =*/ GLES11.GL_SPECULAR,
             /*params =*/ new float[] {0.7f, 0.7f, 0.7f, 1.0f},
             /*offset =*/ 0
           );
-        gl.glTranslatef(0, 0, -3.0f);
-        gl.glRotatef(Roll, 0, 1, 0);
-        gl.glRotatef(Elev, 1, 0, 0);
-        gl.glRotatef(Azi, 0, 0, 1);
-        gl.glScalef(2.0f, 2.0f, 2.0f);
-        gl.glFrontFace(GL11.GL_CCW);
-        gl.glMaterialfv
+        GLES11.glTranslatef(0, 0, -3.0f);
+        GLES11.glRotatef(Roll, 0, 1, 0);
+        GLES11.glRotatef(Elev, 1, 0, 0);
+        GLES11.glRotatef(Azi, 0, 0, 1);
+        GLES11.glScalef(2.0f, 2.0f, 2.0f);
+        GLES11.glFrontFace(GLES11.GL_CCW);
+        GLES11.glMaterialfv
           (
-            /*face =*/ GL11.GL_FRONT_AND_BACK,
-            /*pname =*/ GL11.GL_AMBIENT,
+            /*face =*/ GLES11.GL_FRONT_AND_BACK,
+            /*pname =*/ GLES11.GL_AMBIENT,
             /*params =*/ new float[] {0.4f, 0.4f, 0.4f, 1.0f},
             /*offset =*/ 0
           );
-        gl.glMaterialfv
+        GLES11.glMaterialfv
           (
-            /*face =*/ GL11.GL_FRONT_AND_BACK,
-            /*pname =*/ GL11.GL_SPECULAR,
+            /*face =*/ GLES11.GL_FRONT_AND_BACK,
+            /*pname =*/ GLES11.GL_SPECULAR,
             /*params =*/ new float[] {0.6f, 0.6f, 0.36f, 1.0f},
             /*offset =*/ 0
           );
-        Arrow.Draw(gl);
+        Arrow.Draw();
       } /*Draw*/
 
   } /*Compass*/

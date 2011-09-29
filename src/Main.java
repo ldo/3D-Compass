@@ -27,61 +27,11 @@ public class Main extends android.app.Activity
     android.widget.TextView Message1View, Message2View;
     android.view.SurfaceView Graphical;
     android.hardware.SensorManager SensorMan;
-    android.hardware.Sensor Compass = null;
+    android.hardware.Sensor CompassSensor = null;
     CommonListener Listen;
-    android.hardware.Camera TheCamera;
     final long[] FrameTimes = new long[25];
+    boolean Active = false, SurfaceExists = false;
     int NextFrameTime = 0;
-
-    void StopCompass()
-      {
-        if (Compass != null && Listen != null)
-          {
-            SensorMan.unregisterListener(Listen, Compass);
-          } /*if*/
-      } /*StopCompass*/
-
-    void StartCompass()
-      {
-        if (Compass != null && Listen != null)
-          {
-            SensorMan.registerListener
-              (
-                Listen,
-                Compass,
-                android.hardware.SensorManager.SENSOR_DELAY_UI
-              );
-          } /*if*/
-      } /*StartCompass*/
-
-    void StopCamera()
-      {
-        if (TheCamera != null)
-          {
-            if (Listen != null)
-              {
-                Listen.StopCamera();
-              } /*if*/
-            TheCamera.release();
-            TheCamera = null;
-          } /*if*/
-      } /*StopCamera*/
-
-    void StartCamera()
-      {
-        TheCamera = android.hardware.Camera.open();
-        if (TheCamera != null)
-          {
-            if (Listen != null)
-              {
-                Listen.StartCamera();
-              } /*if*/
-          }
-        else
-          {
-            Message2View.setText("Failed to open camera");
-          } /*if*/
-      } /*StartCamera*/
 
     private class CommonListener
         implements
@@ -93,6 +43,7 @@ public class Main extends android.app.Activity
         private EGLUseful.SurfaceContext GLContext;
         ByteBuffer GLPixels;
         android.graphics.Bitmap GLBits;
+        private android.hardware.Camera TheCamera;
         private final Compass Needle;
         private android.graphics.Point PreviewSize;
         private int[] ImageBuf;
@@ -103,7 +54,129 @@ public class Main extends android.app.Activity
             Needle = new Compass();
           } /*CommonListener*/
 
-        public void Release()
+        public void Start()
+          {
+            AllocateGL();
+            StartCompass();
+            StartCamera();
+          } /*Start*/
+
+        public void Stop()
+          {
+            StopCamera();
+            StopCompass();
+            ReleaseGL();
+          } /*Stop*/
+
+        public void Finish()
+          {
+            Stop();
+            EGLUseful.EGL.eglTerminate(Display);
+          } /*Finish*/
+
+        private void StartCompass()
+          {
+            if (CompassSensor != null)
+              {
+                SensorMan.registerListener
+                  (
+                    this,
+                    CompassSensor,
+                    android.hardware.SensorManager.SENSOR_DELAY_UI
+                  );
+              } /*if*/
+          } /*StartCompass*/
+
+        private void StopCompass()
+          {
+            if (CompassSensor != null)
+              {
+                SensorMan.unregisterListener(this, CompassSensor);
+              } /*if*/
+          } /*StopCompass*/
+
+        private void StartCamera()
+          {
+            TheCamera = android.hardware.Camera.open();
+            if (TheCamera != null)
+              {
+                System.err.printf
+                  (
+                    "My activity orientation is %d\n",
+                    Main.this.getWindowManager().getDefaultDisplay().getOrientation()
+                  );
+                PreviewSize = CameraUseful.GetLargestPreviewSizeAtMost(TheCamera, Graphical.getWidth(), Graphical.getHeight());
+                System.err.printf("Setting preview size to %d*%d (at most %d*%d)\n", PreviewSize.x, PreviewSize.y, Graphical.getWidth(), Graphical.getHeight());
+                final android.hardware.Camera.Parameters Parms = TheCamera.getParameters();
+                Parms.setPreviewSize(PreviewSize.x, PreviewSize.y);
+                TheCamera.setParameters(Parms);
+                ImageBuf = new int[PreviewSize.x * PreviewSize.y];
+                TheCamera.setPreviewCallback(this);
+                TheCamera.startPreview();
+              }
+            else
+              {
+                Message2View.setText("Failed to open camera");
+              } /*if*/
+          } /*StartCamera*/
+
+        private void StopCamera()
+          {
+            if (TheCamera != null)
+              {
+                TheCamera.stopPreview();
+                TheCamera.setPreviewCallback(null);
+                TheCamera.release();
+                TheCamera = null;
+                ImageBuf = null;
+              } /*if*/
+          } /*StopCamera*/
+
+        private void AllocateGL()
+          {
+            final int Width = Graphical.getWidth();
+            final int Height = Graphical.getHeight();
+            GLContext = EGLUseful.SurfaceContext.CreatePbuffer
+              (
+                /*ForDisplay =*/ Display,
+                /*TryConfigs =*/
+                    EGLUseful.GetCompatConfigs
+                      (
+                        /*ForDisplay =*/ Display,
+                        /*MatchingAttribs =*/
+                            new int[]
+                                {
+                                    EGL10.EGL_RED_SIZE, 8,
+                                    EGL10.EGL_GREEN_SIZE, 8,
+                                    EGL10.EGL_BLUE_SIZE, 8,
+                                    EGL10.EGL_ALPHA_SIZE, 8,
+                                    EGL10.EGL_DEPTH_SIZE, 16,
+                                    EGL10.EGL_SURFACE_TYPE, EGL10.EGL_PBUFFER_BIT,
+                                    EGL10.EGL_CONFIG_CAVEAT, EGL10.EGL_NONE,
+                                    EGL10.EGL_NONE /* marks end of list */
+                                }
+                      ),
+                /*Width =*/ Width,
+                /*Height =*/ Height,
+                /*ExactSize =*/ true,
+                /*ShareContext =*/ null
+              );
+            GLContext.SetCurrent();
+            Needle.Setup(Width, Height);
+            GLContext.ClearCurrent();
+            GLPixels = ByteBuffer.allocateDirect
+              (
+                Width * Height * 4
+              ).order(java.nio.ByteOrder.nativeOrder());
+            GLBits = android.graphics.Bitmap.createBitmap
+              (
+                /*width =*/ Width,
+                /*height =*/ Height,
+                /*config =*/ android.graphics.Bitmap.Config.ARGB_8888
+              );
+          } /*AllocateGL*/
+
+        private void ReleaseGL()
           {
             if (GLContext != null)
               {
@@ -115,30 +188,7 @@ public class Main extends android.app.Activity
                 GLBits.recycle();
                 GLBits = null;
               } /*if*/
-          } /*Release*/
-
-        public void Finish()
-          {
-            EGLUseful.EGL.eglTerminate(Display);
-          } /*Finish*/
-
-        public void StartCamera()
-          {
-            if (TheCamera != null && ImageBuf != null)
-              {
-                TheCamera.setPreviewCallback(this);
-                TheCamera.startPreview();
-              } /*if*/
-          } /*StartCamera*/
-
-        public void StopCamera()
-          {
-            if (TheCamera != null)
-              {
-                TheCamera.stopPreview();
-                TheCamera.setPreviewCallback(null);
-              } /*if*/
-          } /*StopCamera*/
+          } /*ReleaseGL*/
 
         private float Azi, Elev, Roll;
 
@@ -169,6 +219,16 @@ public class Main extends android.app.Activity
                   {
                     GLContext.SetCurrent();
                     Needle.Draw(Azi, Elev, Roll);
+                      { /* debug */
+                        final int EGLError = EGLUseful.EGL.eglGetError();
+                        if (EGLError != EGL10.EGL_SUCCESS)
+                          {
+                            System.err.printf
+                              (
+                                "Compass3D.Main EGL error 0x%04x\n", EGLError
+                              );
+                          } /*if*/
+                      }
                     GLES11.glFinish();
                     GLES11.glReadPixels
                       (
@@ -296,64 +356,12 @@ public class Main extends android.app.Activity
             int Height
           )
           {
-            StopCamera();
-            Release();
-            GLContext = EGLUseful.SurfaceContext.CreatePbuffer
-              (
-                /*ForDisplay =*/ Display,
-                /*TryConfigs =*/
-                    EGLUseful.GetCompatConfigs
-                      (
-                        /*ForDisplay =*/ Display,
-                        /*MatchingAttribs =*/
-                            new int[]
-                                {
-                                    EGL10.EGL_RED_SIZE, 8,
-                                    EGL10.EGL_GREEN_SIZE, 8,
-                                    EGL10.EGL_BLUE_SIZE, 8,
-                                    EGL10.EGL_ALPHA_SIZE, 8,
-                                    EGL10.EGL_DEPTH_SIZE, 16,
-                                    EGL10.EGL_SURFACE_TYPE, EGL10.EGL_PBUFFER_BIT,
-                                    EGL10.EGL_CONFIG_CAVEAT, EGL10.EGL_NONE,
-                                    EGL10.EGL_NONE /* marks end of list */
-                                }
-                      ),
-                /*Width =*/ Width,
-                /*Height =*/ Height,
-                /*ExactSize =*/ true,
-                /*ShareContext =*/ null
-              );
-            GLContext.SetCurrent();
-            Needle.Setup(Width, Height);
-            GLContext.ClearCurrent();
-            GLPixels = ByteBuffer.allocateDirect
-              (
-                Width * Height * 4
-              ).order(java.nio.ByteOrder.nativeOrder());
-            GLBits = android.graphics.Bitmap.createBitmap
-              (
-                /*width =*/ Width,
-                /*height =*/ Height,
-                /*config =*/ android.graphics.Bitmap.Config.ARGB_8888
-              );
-            if (TheCamera != null)
+            System.err.println("Compass3D.Main surfaceChanged"); /* debug */
+            Stop();
+            SurfaceExists = true;
+            if (Active)
               {
-                System.err.printf
-                  (
-                    "My activity orientation is %d\n",
-                    Main.this.getWindowManager().getDefaultDisplay().getOrientation()
-                  );
-                PreviewSize = CameraUseful.GetLargestPreviewSizeAtMost(TheCamera, Width, Height);
-                System.err.printf("Setting preview size to %d*%d (at most %d*%d)\n", PreviewSize.x, PreviewSize.y, Width, Height);
-                final android.hardware.Camera.Parameters Parms = TheCamera.getParameters();
-                Parms.setPreviewSize(PreviewSize.x, PreviewSize.y);
-                TheCamera.setParameters(Parms);
-                ImageBuf = new int[PreviewSize.x * PreviewSize.y];
-                StartCamera();
-              }
-            else
-              {
-                ImageBuf = null;
+                Start();
               } /*if*/
           } /*surfaceChanged*/
 
@@ -363,6 +371,7 @@ public class Main extends android.app.Activity
           )
           {
           /* do everything in surfaceChanged */
+            System.err.println("Compass3D.Main surfaceCreated"); /* debug */
           } /*surfaceCreated*/
 
         public void surfaceDestroyed
@@ -370,7 +379,9 @@ public class Main extends android.app.Activity
             android.view.SurfaceHolder TheHolder
           )
           {
-            StopCamera();
+            SurfaceExists = false;
+            Stop();
+            System.err.println("Compass3D.Main surfaceDestroyed"); /* debug */
           } /*surfaceDestroyed*/
 
       } /*CommonListener*/
@@ -387,8 +398,8 @@ public class Main extends android.app.Activity
         Message2View = (android.widget.TextView)findViewById(R.id.message2);
         Graphical = (android.view.SurfaceView)findViewById(R.id.display);
         SensorMan = (android.hardware.SensorManager)getSystemService(SENSOR_SERVICE);
-        Compass = SensorMan.getDefaultSensor(android.hardware.Sensor.TYPE_ORIENTATION);
-        if (Compass == null)
+        CompassSensor = SensorMan.getDefaultSensor(android.hardware.Sensor.TYPE_ORIENTATION);
+        if (CompassSensor == null)
           {
             Message1View.setText("No compass hardware present");
           } /*if*/
@@ -399,22 +410,15 @@ public class Main extends android.app.Activity
     @Override
     public void onDestroy()
       {
-        if (Listen != null)
-          {
-            Listen.Finish();
-          } /*if*/
+        Listen.Finish();
         super.onDestroy();
       } /*onDestroy*/
 
     @Override
     public void onPause()
       {
-        StopCompass();
-        StopCamera();
-        if (Listen != null)
-          {
-            Listen.Release();
-          } /*if*/
+        Listen.Stop();
+        Active = false;
         super.onPause();
       } /*onPause*/
 
@@ -422,8 +426,11 @@ public class Main extends android.app.Activity
     public void onResume()
       {
         super.onResume();
-        StartCamera();
-        StartCompass();
+        Active = true;
+        if (SurfaceExists)
+          {
+            Listen.Start();
+          } /*if*/
       } /*onResume*/
 
   } /*Main*/

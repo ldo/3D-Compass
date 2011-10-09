@@ -207,8 +207,8 @@ public class Main extends android.app.Activity
                         /*colors =*/ ImageBuf,
                         /*offset =*/ 0,
                         /*stride =*/ PreviewSize.y, /* 90° rotated, remember */
-                        /*x =*/ 0,
-                        /*y =*/ 0,
+                        /*x =*/ (Graphical.getWidth() - PreviewSize.y) / 2,
+                        /*y =*/ (Graphical.getHeight() - PreviewSize.x) / 2,
                         /*width =*/ PreviewSize.y,
                         /*height =*/ PreviewSize.x,
                         /*hasAlpha =*/ true,

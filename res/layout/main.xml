@@ -10,12 +10,12 @@
         android:layout_height="320dp"
         android:layout_gravity="center"
     />
-    <TextView  
+    <TextView
         android:id="@+id/message1"
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
     />
-    <TextView  
+    <TextView
         android:id="@+id/message2"
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"

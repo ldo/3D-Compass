@@ -2,7 +2,7 @@ package nz.gen.geek_central.Compass3D;
 /*
     Display a 3D compass arrow using OpenGL, composited on a live camera view.
 
-    Copyright 2011 by Lawrence D'Oliveiro <ldo@geek-central.gen.nz>.
+    Copyright 2011, 2012 by Lawrence D'Oliveiro <ldo@geek-central.gen.nz>.
 
     Licensed under the Apache License, Version 2.0 (the "License"); you may not
     use this file except in compliance with the License. You may obtain a copy of
@@ -45,8 +45,9 @@ public class Main extends android.app.Activity
         android.graphics.Bitmap GLBits;
         private android.hardware.Camera TheCamera;
         private final Compass Needle;
-        private android.graphics.Point PreviewSize;
+        private android.graphics.Point PreviewSize, RotatedPreviewSize;
         private int[] ImageBuf;
+        private int Rotation;
 
         public CommonListener()
           {
@@ -57,6 +58,7 @@ public class Main extends android.app.Activity
         public void Start()
           {
             AllocateGL();
+            Rotation = (5 - Main.this.getWindowManager().getDefaultDisplay().getOrientation()) % 4;
             StartCompass();
             StartCamera();
           } /*Start*/
@@ -110,6 +112,11 @@ public class Main extends android.app.Activity
                 final android.hardware.Camera.Parameters Parms = TheCamera.getParameters();
                 Parms.setPreviewSize(PreviewSize.x, PreviewSize.y);
                 TheCamera.setParameters(Parms);
+                RotatedPreviewSize = new android.graphics.Point
+                  (
+                    (Rotation & 1) != 0 ? PreviewSize.y : PreviewSize.x,
+                    (Rotation & 1) != 0 ? PreviewSize.x : PreviewSize.y
+                  );
                 ImageBuf = new int[PreviewSize.x * PreviewSize.y];
                 TheCamera.setPreviewCallback(this);
                 TheCamera.startPreview();
@@ -206,11 +213,11 @@ public class Main extends android.app.Activity
                       (
                         /*colors =*/ ImageBuf,
                         /*offset =*/ 0,
-                        /*stride =*/ PreviewSize.y, /* 90° rotated, remember */
-                        /*x =*/ (Graphical.getWidth() - PreviewSize.y) / 2,
-                        /*y =*/ (Graphical.getHeight() - PreviewSize.x) / 2,
-                        /*width =*/ PreviewSize.y,
-                        /*height =*/ PreviewSize.x,
+                        /*stride =*/ RotatedPreviewSize.x,
+                        /*x =*/ (Graphical.getWidth() - RotatedPreviewSize.x) / 2,
+                        /*y =*/ (Graphical.getHeight() - RotatedPreviewSize.y) / 2,
+                        /*width =*/ RotatedPreviewSize.x,
+                        /*height =*/ RotatedPreviewSize.y,
                         /*hasAlpha =*/ true,
                         /*paint =*/ null
                       );
@@ -242,14 +249,20 @@ public class Main extends android.app.Activity
                       );
                     GLContext.ClearCurrent();
                     GLBits.copyPixelsFromBuffer(GLPixels);
-                    final android.graphics.Matrix FlipY = new android.graphics.Matrix();
-                    FlipY.preScale
+                    final android.graphics.Matrix ToView = new android.graphics.Matrix();
+                    ToView.preScale
                       (
                         1, -1,
                         0, GLBits.getHeight() / 2.0f
                       );
                       /* Y-axis goes up for OpenGL, down for 2D Canvas */
-                    Display.drawBitmap(GLBits, FlipY, null);
+                    ToView.postRotate
+                      (
+                        (Rotation - 1) * 90.0f,
+                        GLBits.getWidth() / 2.0f,
+                        GLBits.getHeight() / 2.0f
+                      );
+                    Display.drawBitmap(GLBits, ToView, null);
                   } /*if*/
                 Graphical.getHolder().unlockCanvasAndPost(Display);
               }
@@ -337,9 +350,7 @@ public class Main extends android.app.Activity
                 /*SrcWidth =*/ PreviewSize.x,
                 /*SrcHeight =*/ PreviewSize.y,
                 /*Data =*/ Data,
-                /*Rotate =*/ 1,
-                  /* fixme: how do I figure out right rotation angle for different
-                    situations at API level 7? */
+                /*Rotate =*/ Rotation,
                 /*Alpha =*/ 255,
                 /*Pixels =*/ ImageBuf
               );

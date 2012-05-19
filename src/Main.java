@@ -20,6 +20,7 @@ package nz.gen.geek_central.Compass3D;
 import javax.microedition.khronos.egl.EGL10;
 import javax.microedition.khronos.egl.EGLDisplay;
 import android.opengl.GLES11;
+import android.graphics.Matrix;
 import java.nio.ByteBuffer;
 
 public class Main extends android.app.Activity
@@ -48,6 +49,7 @@ public class Main extends android.app.Activity
         private android.graphics.Point PreviewSize, RotatedPreviewSize;
         private int[] ImageBuf;
         private int Rotation;
+        private Matrix ImageTransform;
 
         public CommonListener()
           {
@@ -59,6 +61,19 @@ public class Main extends android.app.Activity
           {
             AllocateGL();
             Rotation = (5 - Main.this.getWindowManager().getDefaultDisplay().getOrientation()) % 4;
+            ImageTransform = new Matrix();
+            ImageTransform.preScale
+              (
+                1, -1,
+                0, GLBits.getHeight() / 2.0f
+              );
+              /* Y-axis goes up for OpenGL, down for 2D Canvas */
+            ImageTransform.postRotate
+              (
+                (Rotation - 1) * 90.0f,
+                GLBits.getWidth() / 2.0f,
+                GLBits.getHeight() / 2.0f
+              );
             StartCompass();
             StartCamera();
           } /*Start*/
@@ -249,20 +264,7 @@ public class Main extends android.app.Activity
                       );
                     GLContext.ClearCurrent();
                     GLBits.copyPixelsFromBuffer(GLPixels);
-                    final android.graphics.Matrix ToView = new android.graphics.Matrix();
-                    ToView.preScale
-                      (
-                        1, -1,
-                        0, GLBits.getHeight() / 2.0f
-                      );
-                      /* Y-axis goes up for OpenGL, down for 2D Canvas */
-                    ToView.postRotate
-                      (
-                        (Rotation - 1) * 90.0f,
-                        GLBits.getWidth() / 2.0f,
-                        GLBits.getHeight() / 2.0f
-                      );
-                    Display.drawBitmap(GLBits, ToView, null);
+                    Display.drawBitmap(GLBits, ImageTransform, null);
                   } /*if*/
                 Graphical.getHolder().unlockCanvasAndPost(Display);
               }

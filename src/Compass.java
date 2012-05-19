@@ -124,6 +124,7 @@ public class Compass
       /* initial setup for drawing that doesn't need to be done for every frame. */
       {
         GLES11.glEnable(GLES11.GL_CULL_FACE);
+      /* GLES11.glEnable(GLES11.GL_MULTISAMPLE); */ /* doesn't seem to make any difference */
         GLES11.glShadeModel(GLES11.GL_SMOOTH);
         GLES11.glEnable(GLES11.GL_LIGHTING);
         GLES11.glEnable(GLES11.GL_LIGHT0);

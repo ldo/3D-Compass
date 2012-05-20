@@ -1,7 +1,8 @@
 3D compass is a sample Android application showing how to use a
 SurfaceView to display a dynamically-updated 3D arrow with OpenGL that
 takes its direction from the orientation sensor, composited on top of
-a live camera preview image, including the following utility classes:
+a live camera preview image. The source code includes the following
+utility classes:
   * CameraUseful: some routines for managing the camera and decoding
     image data
   * EGLUseful: management of EGL context and doing offscreen OpenGL
@@ -13,10 +14,7 @@ a live camera preview image, including the following utility classes:
 
 Note that the compass direction is sometimes inaccurate--at least, on
 my HTC Desire it is. However, turning the phone this way and that will
-often nudge it back into a sensible reading. Also I put in a fixed 90°
-rotation compensation for the camera image in portrait mode; there are
-calls at Android API level 9 to calculate this more generally, which I
-have avoided using here.
+often nudge it back into a sensible reading.
 
 Contents:
     src/ -- Java sources for the Android app

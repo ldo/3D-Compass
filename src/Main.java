@@ -45,6 +45,7 @@ public class Main extends android.app.Activity
         ByteBuffer GLPixels;
         android.graphics.Bitmap GLBits;
         private android.hardware.Camera TheCamera;
+        private CameraSetupExtra TheCameraExtra = null;
         private final Compass Needle;
         private android.graphics.Point PreviewSize, RotatedPreviewSize;
         private int[] ImageBuf;
@@ -112,6 +113,33 @@ public class Main extends android.app.Activity
               } /*if*/
           } /*StopCompass*/
 
+        private class CameraSetupExtra
+          /* does extra setup specific to Android 3.0 and later. Instantiation
+            will fail with NoClassDefFoundError on earlier versions. */
+          {
+            private final android.graphics.SurfaceTexture DummyTexture;
+            private final android.hardware.Camera TheCamera;
+
+            public CameraSetupExtra
+              (
+                android.hardware.Camera TheCamera
+              )
+              {
+                this.TheCamera = TheCamera;
+                int[] ID = new int[1];
+                android.opengl.GLES11.glGenTextures(1, ID, 0);
+                DummyTexture = new android.graphics.SurfaceTexture(ID[0]);
+                TheCamera.setPreviewTexture(DummyTexture);
+              } /*CameraSetupExtra*/
+
+            public void Release()
+              {
+                TheCamera.setPreviewTexture(null);
+              /* DummyTexture.release(); */ /* API 14 or later only */
+              } /*Release*/
+
+          } /*CameraSetupExtra*/
+
         private void StartCamera()
           {
             TheCamera = android.hardware.Camera.open();
@@ -134,6 +162,21 @@ public class Main extends android.app.Activity
                   );
                 ImageBuf = new int[PreviewSize.x * PreviewSize.y];
                 TheCamera.setPreviewCallback(this);
+              /* Note I don't call TheCamera.setPreviewDisplay, even though the docs
+                say this is necessary. I don't want to do that, because I don't want
+                any preview to appear on-screen. I got away with that on an HTC Desire
+                (Android 2.2), but it apears the Samsung Galaxy Nexus (Android 4.0) is
+                not so forgiving. Luckily Honeycomb and later offer setPreviewTexture
+                as an alternative. So I set a dummy one of these. However, this seems
+                to make for a horrible frame rate. I'll have to see how to remedy
+                that later (fixme!). */
+                try
+                  {
+                    TheCameraExtra = new CameraSetupExtra(TheCamera);
+                  }
+                catch (NoClassDefFoundError TooOld)
+                  {
+                  } /*try*/
                 TheCamera.startPreview();
               }
             else
@@ -147,6 +190,11 @@ public class Main extends android.app.Activity
             if (TheCamera != null)
               {
                 TheCamera.stopPreview();
+                if (TheCameraExtra != null)
+                  {
+                    TheCameraExtra.Release();
+                    TheCameraExtra = null;
+                  } /*if*/
                 TheCamera.setPreviewCallback(null);
                 TheCamera.release();
                 TheCamera = null;

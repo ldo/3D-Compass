@@ -81,7 +81,8 @@ public class CameraUseful
                 resolution both horizontally and vertically */
               /* decoding follows algorithm shown at
                 <http://www.mail-archive.com/android-developers@googlegroups.com/msg14558.html>,
-                except it gets red and blue the wrong way round */
+                except it gets red and blue the wrong way round (decoding NV12 rather than NV21) */
+              /* see also good overview of YUV-family formats at <http://wiki.videolan.org/YUV> */
                 final int Cr =
                     (0xff & (int)Data[SrcHeight * SrcWidth + row / 2 * ChromaRowStride + col / 2 * ChromaColStride]) - 128;
                       /* [-128 .. +127] */

@@ -140,6 +140,35 @@ public class Main extends android.app.Activity
 
           } /*CameraSetupExtra*/
 
+        private void DumpList
+          (
+            String Description,
+            java.util.List<?> TheList,
+            java.io.PrintStream Out
+          )
+          {
+            Out.print(Description);
+            if (TheList != null)
+              {
+                Out.print(" ");
+                boolean first = true;
+                for (Object val : TheList)
+                  {
+                    if (!first)
+                      {
+                        Out.print(", ");
+                      } /*if*/
+                    Out.print(val);
+                    first = false;
+                  } /*for*/
+              }
+            else
+              {
+                Out.print("(none)");
+              } /*if*/
+            Out.println();
+          } /*DumpList*/
+
         private void StartCamera()
           {
             TheCamera = android.hardware.Camera.open();
@@ -149,10 +178,68 @@ public class Main extends android.app.Activity
                   (
                     "My activity orientation is %d\n",
                     Main.this.getWindowManager().getDefaultDisplay().getOrientation()
-                  );
+                  ); /* debug */
                 PreviewSize = CameraUseful.GetLargestPreviewSizeAtMost(TheCamera, Graphical.getWidth(), Graphical.getHeight());
-                System.err.printf("Setting preview size to %d*%d (at most %d*%d)\n", PreviewSize.x, PreviewSize.y, Graphical.getWidth(), Graphical.getHeight());
+                System.err.printf("Setting preview size to %d*%d (at most %d*%d)\n", PreviewSize.x, PreviewSize.y, Graphical.getWidth(), Graphical.getHeight()); /* debug */
                 final android.hardware.Camera.Parameters Parms = TheCamera.getParameters();
+                  { /* debug */
+                    System.err.println("Main.StartCamera initial params:");
+                    System.err.printf
+                      (
+                        " Scene mode: %s, preview frame rate %d\n",
+                        Parms.getSceneMode(),
+                        Parms.getPreviewFrameRate()
+                      );
+                    System.err.printf(" White balance: %s\n", Parms.getWhiteBalance());
+                    DumpList
+                      (
+                        " Supported anti-banding:",
+                        Parms.getSupportedAntibanding(),
+                        System.err
+                      );
+                    DumpList
+                      (
+                        " Supported colour effects:",
+                        Parms.getSupportedColorEffects(),
+                        System.err
+                      );
+                    DumpList
+                      (
+                        " Supported flash modes:",
+                        Parms.getSupportedFlashModes(),
+                        System.err
+                      );
+                    DumpList
+                      (
+                        " Supported picture formats:",
+                        Parms.getSupportedPictureFormats(),
+                        System.err
+                      );
+                    DumpList
+                      (
+                        " Supported preview formats:",
+                        Parms.getSupportedPreviewFormats(),
+                        System.err
+                      );
+                    DumpList
+                      (
+                        " Supported preview frame rates:",
+                        Parms.getSupportedPreviewFrameRates(),
+                        System.err
+                      );
+                    DumpList
+                      (
+                        " Supported scene modes:",
+                        Parms.getSupportedSceneModes(),
+                        System.err
+                      );
+                    DumpList
+                      (
+                        " Supported white balances:",
+                        Parms.getSupportedWhiteBalance(),
+                        System.err
+                      );
+                  }
                 Parms.setPreviewSize(PreviewSize.x, PreviewSize.y);
                 TheCamera.setParameters(Parms);
                 RotatedPreviewSize = new android.graphics.Point

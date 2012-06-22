@@ -81,7 +81,6 @@ public class Lathe
         final int[] PrevInds = new int[NrPoints * 2 - 2];
         final int[] FirstInds = new int[NrPoints * 2 - 2];
         final int[] TheseInds = new int[NrPoints * 2 - 2];
-        final GeomBuilder.Vec3f[] ThesePoints = new GeomBuilder.Vec3f[NrPoints * 2 - 2];
         for (int i = 0;;)
           {
             if (i < NrSectors)

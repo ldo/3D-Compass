@@ -290,14 +290,16 @@ public class CameraUseful
 
     public static Camera OpenCamera
       (
-        int CameraID /* ignored pre-API-9 */
+        int CameraID /* any non-negative value valid pre-API-9 */
       )
       {
         return
             API9 != null ?
                 API9.OpenCamera(CameraID)
+            : CameraID >= 0 ?
+                Camera.open()
             :
-                Camera.open();
+                null;
       } /*OpenCamera*/
 
     public static Camera.CameraInfo GetCameraInfo

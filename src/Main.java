@@ -30,6 +30,7 @@ public class Main extends android.app.Activity
     android.hardware.SensorManager SensorMan;
     android.hardware.Sensor CompassSensor = null;
     CommonListener Listen;
+    int TheCameraID;
     final long[] FrameTimes = new long[25];
     boolean Active = false, SurfaceExists = false;
     int NextFrameTime = 0;
@@ -171,7 +172,7 @@ public class Main extends android.app.Activity
 
         private void StartCamera()
           {
-            TheCamera = android.hardware.Camera.open();
+            TheCamera = CameraUseful.OpenCamera(TheCameraID);
             if (TheCamera != null)
               {
                 System.err.printf
@@ -179,6 +180,7 @@ public class Main extends android.app.Activity
                     "My activity orientation is %d\n",
                     Main.this.getWindowManager().getDefaultDisplay().getOrientation()
                   ); /* debug */
+                TheCamera.setDisplayOrientation(CameraUseful.RightOrientation(Main.this, TheCameraID));
                 PreviewSize = CameraUseful.GetLargestPreviewSizeAtMost(TheCamera, Graphical.getWidth(), Graphical.getHeight());
                 System.err.printf("Setting preview size to %d*%d (at most %d*%d)\n", PreviewSize.x, PreviewSize.y, Graphical.getWidth(), Graphical.getHeight()); /* debug */
                 final android.hardware.Camera.Parameters Parms = TheCamera.getParameters();
@@ -551,6 +553,15 @@ public class Main extends android.app.Activity
           {
             Message1View.setText("No compass hardware present");
           } /*if*/
+        if (CameraUseful.CanTellCameraPresent()) /* debug */
+          {
+            System.err.println("3DCompass.Main: rear camera present? " + (CameraUseful.FirstCamera(false) >= 0 ? "YES" : "NO"));
+            System.err.println("3DCompass.Main: front camera present? " + (CameraUseful.FirstCamera(true) >= 0 ? "YES" : "NO"));
+          }
+        else
+          {
+            System.err.println("3DCompass.Main: cannot tell what cameras are present");
+          } /*if*/ /* end debug */
         Listen = new CommonListener();
         Graphical.getHolder().addCallback(Listen);
       } /*onCreate*/

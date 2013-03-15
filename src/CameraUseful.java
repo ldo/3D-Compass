@@ -2,7 +2,7 @@ package nz.gen.geek_central.Compass3D;
 /*
     Useful camera-related stuff.
 
-    Copyright 2011 by Lawrence D'Oliveiro <ldo@geek-central.gen.nz>.
+    Copyright 2011, 2013 by Lawrence D'Oliveiro <ldo@geek-central.gen.nz>.
 
     Licensed under the Apache License, Version 2.0 (the "License"); you may not
     use this file except in compliance with the License. You may obtain a copy of
@@ -90,6 +90,7 @@ public class CameraUseful
                     (0xff & (int)Data[SrcHeight * SrcWidth + row / 2 * ChromaRowStride + col / 2 * ChromaColStride + 1]) - 128;
                       /* [-128 .. +127] */
                 Pixels[dst++] =
+                  /* fixme: should I premultiply alpha? */
                         AlphaMask
                     |
                             Math.max
@@ -172,6 +173,188 @@ public class CameraUseful
               } /*if*/
           } /*for*/
       } /*DecodeNV21*/
+
+    private static class API9Stuff
+      /* stuff only available in API 9 or later. */
+      {
+
+        public Camera OpenCamera
+          (
+            int CameraID
+          )
+          {
+            return
+                Camera.open(CameraID);
+          } /*OpenCamera*/
+
+        public static Camera.CameraInfo GetCameraInfo
+          (
+            int CameraID
+          )
+          /* allocates and fills in a Camera.CameraInfo object for
+            the specified camera. */
+          {
+            final Camera.CameraInfo Result = new Camera.CameraInfo();
+            Camera.getCameraInfo(CameraID, Result);
+            return
+                Result;
+          } /*GetCameraInfo*/
+
+        public static int FirstCamera
+          (
+            boolean FrontFacing /* false for rear-facing */
+          )
+          /* returns the ID of the first camera with the specified Facing value
+            in its CameraInfo. */
+          {
+            int Result = -1;
+            for (int i = 0;;)
+              {
+                if (i == Camera.getNumberOfCameras())
+                    break;
+                if
+                  (
+                        GetCameraInfo(i).facing
+                    ==
+                        (FrontFacing ?
+                            Camera.CameraInfo.CAMERA_FACING_FRONT
+                        :
+                            Camera.CameraInfo.CAMERA_FACING_BACK
+                        )
+                  )
+                  {
+                    Result = i;
+                    break;
+                  } /*if*/
+                ++i;
+              } /*for*/
+            return
+                Result;
+          } /*FirstCamera*/
+
+        public static int RightOrientation
+          (
+            android.app.Activity DisplayActivity,
+            int CameraID
+          )
+          /* returns the value to pass to setDisplayOrientation for an instance
+            of the specified camera so image will be right way up when
+            displayed according to the screen orientation of DisplayActivity. */
+          {
+            final Camera.CameraInfo Info = GetCameraInfo(CameraID);
+            return
+                    (
+                        DisplayActivity.getWindowManager().getDefaultDisplay().getRotation() * -90
+                    +
+                            (Info.facing == Camera.CameraInfo.CAMERA_FACING_BACK ? 1 : -1)
+                        *
+                            Info.orientation
+                    +
+                        360
+                    )
+                %
+                    360;
+          } /*RightOrientation*/
+
+      } /*API9Stuff*/;
+    private static API9Stuff API9;
+
+    static
+      {
+        API9 = null; /* to begin with */
+        try
+          {
+            final API9Stuff TheAPI9 = new API9Stuff();
+          /* trying to do something API-9-specific in constructor doesn't seem to fail properly, try it here */
+            final int i = TheAPI9.FirstCamera(false);
+          /* OK, that succeeded... */
+            API9 = TheAPI9;
+          }
+        catch (NoClassDefFoundError TooOld)
+          {
+          }
+        catch (ExceptionInInitializerError TooOld)
+          {
+          }
+        catch (NoSuchMethodError TooOld)
+          {
+          } /*catch*/
+      } /*static*/
+
+    public static boolean CanTellCameraPresent()
+      /* does FirstCamera (below) actually return a meaningful result. */
+      {
+        return
+            API9 != null;
+      } /*CanTellCameraPresent*/
+
+    public static Camera OpenCamera
+      (
+        int CameraID /* ignored pre-API-9 */
+      )
+      {
+        return
+            API9 != null ?
+                API9.OpenCamera(CameraID)
+            :
+                Camera.open();
+      } /*OpenCamera*/
+
+    public static Camera.CameraInfo GetCameraInfo
+      (
+        int CameraID
+      )
+      /* allocates and fills in a Camera.CameraInfo object for
+        the specified camera. Returns null pre-API-9. */
+      {
+        return
+            API9 != null ?
+                API9.GetCameraInfo(CameraID)
+            :
+                null;
+      } /*GetCameraInfo*/
+
+    public static int FirstCamera
+      (
+        boolean FrontFacing /* false for rear-facing */
+      )
+      /* returns the ID of the first camera with the specified Facing value
+        in its CameraInfo. Pre-API-9, I just assume there may be one rear-facing
+        camera and no front-facing camera, but you can't tell for sure until
+        you actually try to open the camera. */
+      {
+        return
+            API9 != null ?
+                API9.FirstCamera(FrontFacing)
+            : FrontFacing ? /* camera IDs not meaningful pre-API 9, assume just one camera, only rear-facing */
+                -1
+            :
+                0;
+      } /*FirstCamera*/
+
+    public static int RightOrientation
+      (
+        android.app.Activity DisplayActivity,
+        int CameraID
+      )
+      /* returns the value to pass to setDisplayOrientation for an instance
+        of the specified camera so image will be right way up when
+        displayed according to the screen orientation of DisplayActivity. */
+      {
+        return
+            API9 != null ?
+                API9.RightOrientation(DisplayActivity, CameraID)
+            :
+                    (
+                        DisplayActivity.getWindowManager().getDefaultDisplay().getRotation() * -90
+                    +
+                        90 /* or something */
+                    +
+                        360
+                    )
+                %
+                    360;
+      } /*RightOrientation*/
 
     public static android.graphics.Point GetSmallestPreviewSizeAtLeast
       (

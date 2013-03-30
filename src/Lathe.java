@@ -3,7 +3,7 @@ package nz.gen.geek_central.GLUseful;
     Easy construction of objects with a single axis of rotational symmetry,
     building on GeomBuilder.
 
-    Copyright 2011 by Lawrence D'Oliveiro <ldo@geek-central.gen.nz>.
+    Copyright 2011, 2012 by Lawrence D'Oliveiro <ldo@geek-central.gen.nz>.
 
     Licensed under the Apache License, Version 2.0 (the "License"); you may not
     use this file except in compliance with the License. You may obtain a copy of
@@ -22,7 +22,7 @@ public class Lathe
   {
     public interface VertexFunc
       {
-        public GeomBuilder.Vec3f Get
+        public Vec3f Get
           (
             int PointIndex
           );
@@ -30,7 +30,7 @@ public class Lathe
 
     public interface VectorFunc
       {
-        public GeomBuilder.Vec3f Get
+        public Vec3f Get
           (
             int PointIndex,
             int SectorIndex, /* 0 .. NrSectors - 1 */
@@ -43,7 +43,7 @@ public class Lathe
 
     public interface ColorFunc
       {
-        public GeomBuilder.Color Get
+        public GLUseful.Color Get
           (
             int PointIndex,
             int SectorIndex, /* 0 .. NrSectors - 1 */
@@ -56,6 +56,7 @@ public class Lathe
 
     public static GeomBuilder.Obj Make
       (
+        boolean Shaded, /* false for wireframe */
         VertexFunc Point,
           /* returns outline of object, must be at least 3 points, all Z coords must be
             zero, all X coords non-negative, and X coord of first and last point
@@ -65,7 +66,12 @@ public class Lathe
         VectorFunc Normal, /* optional to compute normal vector at each point */
         VectorFunc TexCoord, /* optional to compute texture coordinate at each point */
         ColorFunc VertexColor, /* optional to compute colour at each point */
-        int NrSectors /* must be at least 3 */
+        int NrSectors, /* must be at least 3 */
+        GeomBuilder.ShaderVarDef[] Uniforms,
+          /* optional additional uniform variable definitions for vertex shader */
+        String VertexColorCalc
+          /* optional, compiled as part of vertex shader to implement lighting etc, must
+            assign value to "frag_color" variable */
       )
       /* rotates Points around Y axis with NrSectors steps, invoking the
         specified callbacks to obtain normal vectors, texture coordinates
@@ -74,6 +80,7 @@ public class Lathe
       {
         final GeomBuilder Geom = new GeomBuilder
           (
+            /*Shaded =*/ Shaded,
             /*GotNormals =*/ Normal != null,
             /*GotTexCoords =*/ TexCoord != null,
             /*GotColors =*/ VertexColor != null
@@ -90,8 +97,8 @@ public class Lathe
                 final float Sin = android.util.FloatMath.sin(Angle);
                 for (int j = 0; j < NrPoints; ++j)
                   {
-                    final GeomBuilder.Vec3f Vertex = Point.Get(j);
-                    final GeomBuilder.Vec3f ThisPoint = new GeomBuilder.Vec3f
+                    final Vec3f Vertex = Point.Get(j);
+                    final Vec3f ThisPoint = new Vec3f
                       (
                         Vertex.x * Cos,
                         Vertex.y,
@@ -99,17 +106,17 @@ public class Lathe
                       );
                     if (j < NrPoints - 1)
                       {
-                        final GeomBuilder.Vec3f ThisNormal =
+                        final Vec3f ThisNormal =
                             Normal != null ?
                                 Normal.Get(j, i, true)
                             :
                                 null;
-                        final GeomBuilder.Vec3f ThisTexCoord =
+                        final Vec3f ThisTexCoord =
                             TexCoord != null ?
                                 TexCoord.Get(j, i, true)
                             :
                                 null;
-                        final GeomBuilder.Color ThisColor =
+                        final GLUseful.Color ThisColor =
                             VertexColor != null ?
                                 VertexColor.Get(j, i, true)
                             :
@@ -119,17 +126,17 @@ public class Lathe
                       } /*if*/
                     if (j > 0)
                       {
-                        final GeomBuilder.Vec3f ThisNormal =
+                        final Vec3f ThisNormal =
                             Normal != null ?
                                 Normal.Get(j, i, false)
                             :
                                 null;
-                        final GeomBuilder.Vec3f ThisTexCoord =
+                        final Vec3f ThisTexCoord =
                             TexCoord != null ?
                                 TexCoord.Get(j, i, false)
                             :
                                 null;
-                        final GeomBuilder.Color ThisColor =
+                        final GLUseful.Color ThisColor =
                             VertexColor != null ?
                                 VertexColor.Get(j, i, false)
                             :
@@ -182,7 +189,7 @@ public class Lathe
             ++i;
           } /*for*/
         return 
-            Geom.MakeObj();
+            Geom.MakeObj(Uniforms, VertexColorCalc);
       } /*Make*/
 
   } /*Lathe*/

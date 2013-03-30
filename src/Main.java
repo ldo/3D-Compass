@@ -2,7 +2,7 @@ package nz.gen.geek_central.Compass3D;
 /*
     Display a 3D compass arrow using OpenGL, composited on a live camera view.
 
-    Copyright 2011, 2012 by Lawrence D'Oliveiro <ldo@geek-central.gen.nz>.
+    Copyright 2011-2013 by Lawrence D'Oliveiro <ldo@geek-central.gen.nz>.
 
     Licensed under the Apache License, Version 2.0 (the "License"); you may not
     use this file except in compliance with the License. You may obtain a copy of
@@ -17,80 +17,84 @@ package nz.gen.geek_central.Compass3D;
     the License.
 */
 
-import javax.microedition.khronos.egl.EGL10;
-import javax.microedition.khronos.egl.EGLDisplay;
-import android.opengl.GLES11;
 import android.graphics.Matrix;
-import java.nio.ByteBuffer;
+import android.widget.Toast;
+import android.view.View;
+import nz.gen.geek_central.GLUseful.Mat4f;
+import nz.gen.geek_central.GLUseful.Vec3f;
+import nz.gen.geek_central.GLUseful.GLUseful;
+import static nz.gen.geek_central.GLUseful.GLUseful.gl;
+import nz.gen.geek_central.GLUseful.GLView;
 
 public class Main extends android.app.Activity
   {
+
+    private java.util.Map<android.view.MenuItem, Runnable> OptionsMenu;
+    private java.util.Map<android.view.MenuItem, Runnable> ContextMenu;
+
+    interface RequestResponseAction /* response to an activity result */
+      {
+        public void Run
+          (
+            int ResultCode,
+            android.content.Intent Data
+          );
+      } /*RequestResponseAction*/
+
+    private java.util.Map<Integer, RequestResponseAction> ActivityResultActions;
+  /* request codes */
+    private static final int ChooseCameraRequest = 1;
+
     android.widget.TextView Message1View, Message2View;
-    android.view.SurfaceView Graphical;
+    MainView Graphical;
     android.hardware.SensorManager SensorMan;
     android.hardware.Sensor CompassSensor = null;
     CommonListener Listen;
     int TheCameraID;
     final long[] FrameTimes = new long[25];
-    boolean Active = false, SurfaceExists = false;
+    boolean Active = false, MainViewActive = false;
     int NextFrameTime = 0;
 
     private class CommonListener
         implements
             android.hardware.SensorEventListener,
             android.hardware.Camera.PreviewCallback,
-            android.view.SurfaceHolder.Callback
+            MainView.Handler
       {
-        private final EGLDisplay Display;
-        private EGLUseful.SurfaceContext GLContext;
-        ByteBuffer GLPixels;
-        android.graphics.Bitmap GLBits;
         private android.hardware.Camera TheCamera;
         private CameraSetupExtra TheCameraExtra = null;
-        private final Compass Needle;
         private android.graphics.Point PreviewSize, RotatedPreviewSize;
+        private float ViewRadius;
+        private Compass Needle;
+        private GLView Background;
         private int[] ImageBuf;
         private int Rotation;
-        private Matrix ImageTransform;
+        private Mat4f ProjectionMatrix;
 
         public CommonListener()
           {
-            Display = EGLUseful.NewDisplay();
-            Needle = new Compass();
+          /* nothing to do for now */
           } /*CommonListener*/
 
         public void Start()
           {
-            AllocateGL();
             Rotation = (5 - Main.this.getWindowManager().getDefaultDisplay().getOrientation()) % 4;
-            ImageTransform = new Matrix();
-            ImageTransform.preScale
-              (
-                1, -1,
-                0, GLBits.getHeight() / 2.0f
-              );
-              /* Y-axis goes up for OpenGL, down for 2D Canvas */
-            ImageTransform.postRotate
-              (
-                (Rotation - 1) * 90.0f,
-                GLBits.getWidth() / 2.0f,
-                GLBits.getHeight() / 2.0f
-              );
             StartCompass();
-            StartCamera();
+            if (MainViewActive)
+              {
+                StartCamera();
+              } /*if*/
           } /*Start*/
 
         public void Stop()
           {
             StopCamera();
             StopCompass();
-            ReleaseGL();
           } /*Stop*/
 
         public void Finish()
           {
             Stop();
-            EGLUseful.EGL.eglTerminate(Display);
           } /*Finish*/
 
         private void StartCompass()
@@ -128,7 +132,7 @@ public class Main extends android.app.Activity
               {
                 this.TheCamera = TheCamera;
                 int[] ID = new int[1];
-                android.opengl.GLES11.glGenTextures(1, ID, 0);
+                gl.glGenTextures(1, ID, 0);
                 DummyTexture = new android.graphics.SurfaceTexture(ID[0]);
                 TheCamera.setPreviewTexture(DummyTexture);
               } /*CameraSetupExtra*/
@@ -177,10 +181,40 @@ public class Main extends android.app.Activity
               {
                 System.err.printf
                   (
-                    "My activity orientation is %d\n",
-                    Main.this.getWindowManager().getDefaultDisplay().getOrientation()
+                    "My activity orientation is %d, using camera %d\n",
+                    Main.this.getWindowManager().getDefaultDisplay().getOrientation(),
+                    TheCameraID
                   ); /* debug */
-                TheCamera.setDisplayOrientation(CameraUseful.RightOrientation(Main.this, TheCameraID));
+                try
+                  {
+                    final int RightOrientation = CameraUseful.RightOrientation(Main.this, TheCameraID);
+                    TheCamera.setDisplayOrientation(RightOrientation);
+                    Toast.makeText /* debug */
+                      (
+                        /*context =*/ Main.this,
+                        /*text =*/
+                            String.format
+                              (
+                                "Set camera orientation to %d°",
+                                RightOrientation
+                              ),
+                        /*duration =*/ Toast.LENGTH_SHORT
+                      ).show();
+                  }
+                catch (RuntimeException Failed)
+                  {
+                    Toast.makeText
+                      (
+                        /*context =*/ Main.this,
+                        /*text =*/
+                            String.format
+                              (
+                                getString(R.string.set_orientation_failed),
+                                CameraUseful.RightOrientation(Main.this, TheCameraID)
+                              ),
+                        /*duration =*/ Toast.LENGTH_SHORT
+                      ).show();
+                  } /*try*/
                 PreviewSize = CameraUseful.GetLargestPreviewSizeAtMost(TheCamera, Graphical.getWidth(), Graphical.getHeight());
                 System.err.printf("Setting preview size to %d*%d (at most %d*%d)\n", PreviewSize.x, PreviewSize.y, Graphical.getWidth(), Graphical.getHeight()); /* debug */
                 final android.hardware.Camera.Parameters Parms = TheCamera.getParameters();
@@ -291,125 +325,16 @@ public class Main extends android.app.Activity
               } /*if*/
           } /*StopCamera*/
 
-        private void AllocateGL()
-          {
-            final int Width = Graphical.getWidth();
-            final int Height = Graphical.getHeight();
-            GLContext = EGLUseful.SurfaceContext.CreatePbuffer
-              (
-                /*ForDisplay =*/ Display,
-                /*TryConfigs =*/
-                    EGLUseful.GetCompatConfigs
-                      (
-                        /*ForDisplay =*/ Display,
-                        /*MatchingAttribs =*/
-                            new int[]
-                                {
-                                    EGL10.EGL_RED_SIZE, 8,
-                                    EGL10.EGL_GREEN_SIZE, 8,
-                                    EGL10.EGL_BLUE_SIZE, 8,
-                                    EGL10.EGL_ALPHA_SIZE, 8,
-                                    EGL10.EGL_DEPTH_SIZE, 16,
-                                    EGL10.EGL_SURFACE_TYPE, EGL10.EGL_PBUFFER_BIT,
-                                    EGL10.EGL_CONFIG_CAVEAT, EGL10.EGL_NONE,
-                                    EGL10.EGL_NONE /* marks end of list */
-                                }
-                      ),
-                /*Width =*/ Width,
-                /*Height =*/ Height,
-                /*ExactSize =*/ true,
-                /*ShareContext =*/ null
-              );
-            GLContext.SetCurrent();
-            Needle.Setup(Width, Height);
-            GLContext.ClearCurrent();
-            GLPixels = ByteBuffer.allocateDirect
-              (
-                Width * Height * 4
-              ).order(java.nio.ByteOrder.nativeOrder());
-            GLBits = android.graphics.Bitmap.createBitmap
-              (
-                /*width =*/ Width,
-                /*height =*/ Height,
-                /*config =*/ android.graphics.Bitmap.Config.ARGB_8888
-              );
-          } /*AllocateGL*/
-
-        private void ReleaseGL()
-          {
-            if (GLContext != null)
-              {
-                GLContext.Release();
-                GLContext = null;
-              } /*if*/
-            if (GLBits != null)
-              {
-                GLBits.recycle();
-                GLBits = null;
-              } /*if*/
-          } /*ReleaseGL*/
-
-        private float Azi, Elev, Roll;
-
-        private void Draw()
-          /* (re)draws the complete composited display. */
-          {
-            final android.graphics.Canvas Display = Graphical.getHolder().lockCanvas();
-            if (Display != null)
-              {
-                Display.drawColor(0, android.graphics.PorterDuff.Mode.SRC);
-                  /* initialize all pixels to fully transparent */
-                if (ImageBuf != null)
-                  {
-                    Display.drawBitmap
-                      (
-                        /*colors =*/ ImageBuf,
-                        /*offset =*/ 0,
-                        /*stride =*/ RotatedPreviewSize.x,
-                        /*x =*/ (Graphical.getWidth() - RotatedPreviewSize.x) / 2,
-                        /*y =*/ (Graphical.getHeight() - RotatedPreviewSize.y) / 2,
-                        /*width =*/ RotatedPreviewSize.x,
-                        /*height =*/ RotatedPreviewSize.y,
-                        /*hasAlpha =*/ true,
-                        /*paint =*/ null
-                      );
-                  } /*if*/
-                if (GLContext != null)
-                  {
-                    GLContext.SetCurrent();
-                    Needle.Draw(Azi, Elev, Roll);
-                      { /* debug */
-                        final int EGLError = EGLUseful.EGL.eglGetError();
-                        if (EGLError != EGL10.EGL_SUCCESS)
-                          {
-                            System.err.printf
-                              (
-                                "Compass3D.Main EGL error 0x%04x\n", EGLError
-                              );
-                          } /*if*/
-                      }
-                    GLES11.glFinish();
-                    GLES11.glReadPixels
-                      (
-                        /*x =*/ 0,
-                        /*y =*/ 0,
-                        /*width =*/ GLBits.getWidth(),
-                        /*height =*/ GLBits.getHeight(),
-                        /*format =*/ GLES11.GL_RGBA,
-                        /*type =*/ GLES11.GL_UNSIGNED_BYTE,
-                        /*pixels =*/ GLPixels
-                      );
-                    GLContext.ClearCurrent();
-                    GLBits.copyPixelsFromBuffer(GLPixels);
-                    Display.drawBitmap(GLBits, ImageTransform, null);
-                  } /*if*/
-                Graphical.getHolder().unlockCanvasAndPost(Display);
-              }
-            else
-              {
-                System.err.println("Graphical surface not ready");
-              } /*if*/
-          } /*Draw*/
+        private float
+            Azi,
+              /* always Earth-horizontal, regardless of orientation of phone */
+            Elev,
+              /* always around X-axis of phone, +ve is top-down, -ve is top-up */
+            Roll;
+              /* always around Y-axis of phone, +ve is anticlockwise
+                viewed from bottom, -ve is clockwise, until it reaches
+                ±90° when it its starts decreasing in magnitude again, so
+                0° is when phone is horizontal either face-up or face-down */
 
       /* SensorEventListener methods: */
 
@@ -449,16 +374,16 @@ public class Main extends android.app.Activity
             Msg.print(")\n");
             Msg.flush();
             Message1View.setText(MessageBuf.toString());
-            Azi = Event.values[0];
-            Elev = Event.values[1];
-            Roll = Event.values[2];
+            Azi = (float)Math.toRadians(Event.values[0]);
+            Elev = (float)Math.toRadians(Event.values[1]);
+            Roll = (float)Math.toRadians(Event.values[2]);
             final long Now = System.currentTimeMillis();
             if (Now - LastSensorUpdate >= 250)
               /* throttle sensor updates because they seem to cause contention
                 with camera preview updates */
               {
                 LastSensorUpdate = Now;
-                Draw();
+                Graphical.requestRender();
               } /*if*/
           } /*onSensorChanged*/
 
@@ -489,64 +414,208 @@ public class Main extends android.app.Activity
                 /*SrcWidth =*/ PreviewSize.x,
                 /*SrcHeight =*/ PreviewSize.y,
                 /*Data =*/ Data,
-                /*Rotate =*/ Rotation,
+                /*Rotate =*/ CameraUseful.CanTellCameraPresent() ? 0 : Rotation,
                 /*Alpha =*/ 255,
                 /*Pixels =*/ ImageBuf
               );
-            Draw();
+            Graphical.requestRender();
           } /*onPreviewFrame*/
 
-      /* SurfaceHolder.Callback methods: */
+      /* MainView.Handler methods: */
 
-        public void surfaceChanged
+        public void Setup
           (
-            android.view.SurfaceHolder TheHolder,
-            int Format,
-            int Width,
-            int Height
+            int ViewWidth,
+            int ViewHeight
           )
+          /* initial setup for drawing that doesn't need to be done for every frame. */
           {
-            System.err.println("Compass3D.Main surfaceChanged"); /* debug */
-            Stop();
-            SurfaceExists = true;
+            ViewRadius = Math.min(ViewWidth, ViewHeight) / 2.0f;
+            if (Needle != null)
+              {
+                Needle.Release();
+                Needle = null;
+              } /*if*/
+            if (Background != null) /* force re-creation to match view dimensions */
+              {
+                Background.Release();
+                Background = null;
+              } /*if*/
+            Needle = new Compass();
+            Background = new GLView(ViewWidth, ViewHeight);
+            gl.glEnable(gl.GL_CULL_FACE);
+            gl.glViewport
+              (
+                Math.round(ViewWidth / 2.0f - ViewRadius),
+                Math.round(ViewHeight / 2.0f - ViewRadius),
+                Math.round(2.0f * ViewRadius),
+                Math.round(2.0f * ViewRadius)
+              );
+            ProjectionMatrix =
+                    Mat4f.frustum
+                      (
+                        /*L =*/ -0.1f,
+                        /*R =*/ 0.1f,
+                        /*B =*/ -0.1f,
+                        /*T =*/ 0.1f,
+                        /*N =*/ 0.1f,
+                        /*F =*/ 3.1f
+                      )
+                .mul(
+                    Mat4f.translation(new Vec3f(0.0f, 0.0f, -1.6f))
+                );
+            MainViewActive = true;
             if (Active)
               {
-                Start();
+                runOnUiThread
+                  (
+                    new Runnable()
+                      {
+                        public void run()
+                          {
+                            StopCamera();
+                            StartCamera();
+                          } /*run*/
+                      } /*Runnable*/
+                  );
               } /*if*/
-          } /*surfaceChanged*/
+          } /*Setup*/
 
-        public void surfaceCreated
-          (
-            android.view.SurfaceHolder TheHolder
-          )
+        public void Draw()
+          /* generates the complete composite display. */
           {
-          /* do everything in surfaceChanged */
-            System.err.println("Compass3D.Main surfaceCreated"); /* debug */
-          } /*surfaceCreated*/
+              {
+                final android.graphics.Canvas g = Background.Draw;
+                g.drawColor(0, android.graphics.PorterDuff.Mode.SRC);
+                  /* initialize all pixels to fully transparent */
+                if (ImageBuf != null)
+                  {
+                    g.drawBitmap
+                      (
+                        /*colors =*/ ImageBuf,
+                        /*offset =*/ 0,
+                        /*stride =*/ RotatedPreviewSize.x,
+                        /*x =*/ (Graphical.getWidth() - RotatedPreviewSize.x) / 2,
+                        /*y =*/ (Graphical.getHeight() - RotatedPreviewSize.y) / 2,
+                        /*width =*/ RotatedPreviewSize.x,
+                        /*height =*/ RotatedPreviewSize.y,
+                        /*hasAlpha =*/ true,
+                        /*paint =*/ null
+                      );
+                  } /*if*/
+                Background.DrawChanged();
+              }
+            GLUseful.ClearColor(new GLUseful.Color(0)); /* all pixels initially transparent */
+            gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT);
+            gl.glDisable(gl.GL_DEPTH_TEST);
+            Background.Draw
+              (
+                /*Projection =*/ Mat4f.identity(),
+                /*Left =*/ -1.0f,
+                /*Bottom =*/ -1.0f,
+                /*Right =*/ 1.0f,
+                /*Top =*/ 1.0f,
+                /*Depth =*/ 0.99f
+              );
+            final Mat4f Orientation =
+                (
+                    Mat4f.rotation(Mat4f.AXIS_Z, (1 - Rotation) * (float)Math.PI / 2.0f)
+                ).mul(
+                    Mat4f.rotation(Mat4f.AXIS_Y, Roll)
+                ).mul(
+                    Mat4f.rotation(Mat4f.AXIS_X, Elev)
+                ).mul(
+                    Mat4f.rotation(Mat4f.AXIS_Z, Azi)
+                );
+            gl.glEnable(gl.GL_DEPTH_TEST);
+            Needle.Draw
+              (
+                /*ProjectionMatrix =*/ ProjectionMatrix,
+                /*ModelViewMatrix =*/ Orientation
+              );
+          } /*Draw*/
 
-        public void surfaceDestroyed
-          (
-            android.view.SurfaceHolder TheHolder
-          )
+        public void Release()
           {
-            SurfaceExists = false;
-            Stop();
-            System.err.println("Compass3D.Main surfaceDestroyed"); /* debug */
-          } /*surfaceDestroyed*/
+          /* losing the GL context anyway, so don't bother releasing anything: */
+            Needle = null;
+            Background = null;
+            MainViewActive = false;
+          } /*Release*/
 
-      } /*CommonListener*/
+      } /*CommonListener*/;
+
+    void BuildActivityResultActions()
+      {
+        ActivityResultActions = new java.util.HashMap<Integer, RequestResponseAction>();
+        ActivityResultActions.put
+          (
+            ChooseCameraRequest,
+            new RequestResponseAction()
+              {
+                public void Run
+                  (
+                    int ResultCode,
+                    android.content.Intent Data
+                  )
+                  {
+                    Listen.StopCamera();
+                    TheCameraID = Data.getIntExtra(CameraList.CameraIDID, TheCameraID);
+                    if (Active && MainViewActive)
+                      {
+                        Listen.StartCamera();
+                      } /*if*/
+                  } /*Run*/
+              } /*RequestResponseAction*/
+          );
+      } /*BuildActivityResultActions*/
 
     @Override
     public void onCreate
       (
-        android.os.Bundle savedInstanceState
+        android.os.Bundle SavedInstanceState
       )
       {
-        super.onCreate(savedInstanceState);
+        super.onCreate(SavedInstanceState);
+        BuildActivityResultActions();
+        if (SavedInstanceState != null)
+          {
+            TheCameraID = SavedInstanceState.getInt(CameraList.CameraIDID, 0);
+          } /*if*/
         setContentView(R.layout.main);
+        findViewById(R.id.main_view).setOnClickListener
+          (
+            new View.OnClickListener()
+              {
+                public void onClick
+                  (
+                    View TheView
+                  )
+                  {
+                    if (CameraUseful.CanTellCameraPresent())
+                      {
+                        CameraList.Launch
+                          (
+                            /*Caller =*/ Main.this,
+                            /*RequestCode =*/ ChooseCameraRequest,
+                            /*CurCameraID =*/ TheCameraID
+                          );
+                      }
+                    else
+                      {
+                        Toast.makeText
+                          (
+                            /*context =*/ Main.this,
+                            /*text =*/ getString(R.string.no_camera_info),
+                            /*duration =*/ Toast.LENGTH_SHORT
+                          ).show();
+                      } /*if*/
+                  } /*onClick*/
+              } /*View.OnClickListener*/
+          );
         Message1View = (android.widget.TextView)findViewById(R.id.message1);
         Message2View = (android.widget.TextView)findViewById(R.id.message2);
-        Graphical = (android.view.SurfaceView)findViewById(R.id.display);
+        Graphical = (MainView)findViewById(R.id.display);
         SensorMan = (android.hardware.SensorManager)getSystemService(SENSOR_SERVICE);
         CompassSensor = SensorMan.getDefaultSensor(android.hardware.Sensor.TYPE_ORIENTATION);
         if (CompassSensor == null)
@@ -563,8 +632,17 @@ public class Main extends android.app.Activity
             System.err.println("3DCompass.Main: cannot tell what cameras are present");
           } /*if*/ /* end debug */
         Listen = new CommonListener();
-        Graphical.getHolder().addCallback(Listen);
+        Graphical.SetHandler(Listen);
       } /*onCreate*/
+
+    @Override
+    public void onSaveInstanceState
+      (
+        android.os.Bundle SavedInstanceState
+      )
+      {
+        SavedInstanceState.putInt(CameraList.CameraIDID, TheCameraID);
+      } /*onSaveInstanceState*/
 
     @Override
     public void onDestroy()
@@ -586,10 +664,26 @@ public class Main extends android.app.Activity
       {
         super.onResume();
         Active = true;
-        if (SurfaceExists)
-          {
-            Listen.Start();
-          } /*if*/
+        Listen.Start();
       } /*onResume*/
+
+    @Override
+    public void onActivityResult
+      (
+        int RequestCode,
+        int ResultCode,
+        android.content.Intent Data
+      )
+      {
+        CameraList.Cleanup();
+        if (ResultCode != android.app.Activity.RESULT_CANCELED)
+          {
+            final RequestResponseAction Action = ActivityResultActions.get(RequestCode);
+            if (Action != null)
+              {
+                Action.Run(ResultCode, Data);
+              } /*if*/
+          } /*if*/
+      } /*onActivityResult*/
 
   } /*Main*/

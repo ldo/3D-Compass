@@ -40,6 +40,17 @@
          application and should be checked into Version Control Systems. -->
     <loadproperties srcFile="project.properties" />
 
+    <target name="clean" description="Removes output files created by other targets.">
+        <delete dir="${out.absolute.dir}" verbose="${verbose}" />
+        <delete dir="${gen.absolute.dir}" verbose="${verbose}" />
+        <delete dir="${native.libs.absolute.dir}" verbose="${verbose}" />
+        <delete dir="obj" verbose="${verbose}" />
+    </target>
+
+    <target name="-pre-build">
+        <exec executable="${ndk.dir}/ndk-build"/>
+    </target>
+
     <!-- quick check on sdk.dir -->
     <fail
             message="sdk.dir is missing. Make sure to generate local.properties using 'android update project'"
@@ -50,8 +61,6 @@
 <!-- extension targets. Uncomment the ones where you want to do custom work
      in between standard targets -->
 <!--
-    <target name="-pre-build">
-    </target>
     <target name="-pre-compile">
     </target>
 

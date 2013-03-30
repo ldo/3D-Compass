@@ -1,4 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">3D Compass</string>
+    <string name="camera_list_name">Camera List</string>
+    <string name="no_camera_info">Sorry, no info on available cameras</string>
+    <string name="set_orientation_failed">Failed to set camera orientation to %d°</string>
+    <string name="back">back</string>
+    <string name="front">front</string>
 </resources>

@@ -17,7 +17,9 @@ package nz.gen.geek_central.Compass3D;
     the License.
 */
 
-import android.opengl.GLES11;
+import android.util.FloatMath;
+import nz.gen.geek_central.GLUseful.Mat4f;
+import nz.gen.geek_central.GLUseful.Vec3f;
 import nz.gen.geek_central.GLUseful.GeomBuilder;
 import nz.gen.geek_central.GLUseful.Lathe;
 
@@ -43,38 +45,39 @@ public class Compass
             HeadThickness / (float)Math.hypot(HeadThickness, HeadLengthInner);
         final float InnerTiltSin =
             HeadLengthInner / (float)Math.hypot(HeadThickness, HeadLengthInner);
-        final GeomBuilder.Vec3f[] Points =
-            new GeomBuilder.Vec3f[]
+        final Vec3f[] Points =
+            new Vec3f[]
               {
-                new GeomBuilder.Vec3f(0.0f, 1.0f, 0.0f),
-                new GeomBuilder.Vec3f(HeadThickness, 1.0f - HeadLengthOuter, 0.0f),
-                new GeomBuilder.Vec3f(BodyThickness, 1.0f - HeadLengthInner, 0.0f),
-                new GeomBuilder.Vec3f(BodyThickness, BaseBevel - 1.0f, 0.0f),
-                new GeomBuilder.Vec3f(BodyThickness - BaseBevel, -0.98f, 0.0f),
+                new Vec3f(0.0f, 1.0f, 0.0f),
+                new Vec3f(HeadThickness, 1.0f - HeadLengthOuter, 0.0f),
+                new Vec3f(BodyThickness, 1.0f - HeadLengthInner, 0.0f),
+                new Vec3f(BodyThickness, BaseBevel - 1.0f, 0.0f),
+                new Vec3f(BodyThickness - BaseBevel, -0.98f, 0.0f),
                   /* y-coord of -1.0 seems to produce gaps in rendering when base
                     is face-on to viewer */
-                new GeomBuilder.Vec3f(0.0f, -1.0f, 0.0f),
+                new Vec3f(0.0f, -1.0f, 0.0f),
               };
-        final GeomBuilder.Vec3f[] Normals =
-            new GeomBuilder.Vec3f[]
+        final Vec3f[] Normals =
+            new Vec3f[]
               {
-                new GeomBuilder.Vec3f(OuterTiltSin, OuterTiltCos, 0.0f), /* tip */
-                new GeomBuilder.Vec3f(InnerTiltSin, - InnerTiltCos, 0.0f), /* head */
-                new GeomBuilder.Vec3f(1.0f, 0.0f, 0.0f), /* body */
-                new GeomBuilder.Vec3f
+                new Vec3f(OuterTiltSin, OuterTiltCos, 0.0f), /* tip */
+                new Vec3f(InnerTiltSin, - InnerTiltCos, 0.0f), /* head */
+                new Vec3f(1.0f, 0.0f, 0.0f), /* body */
+                new Vec3f
                   (
-                    android.util.FloatMath.sqrt(0.5f),
-                    -android.util.FloatMath.sqrt(0.5f),
+                    FloatMath.sqrt(0.5f),
+                    -FloatMath.sqrt(0.5f),
                     0.0f
                   ), /* bevel */
-                new GeomBuilder.Vec3f(0.0f, -1.0f, 0.0f), /* base */
+                new Vec3f(0.0f, -1.0f, 0.0f), /* base */
               };
         Arrow = Lathe.Make
           (
+            /*Shaded =*/ true,
             /*Points =*/
                 new Lathe.VertexFunc()
                   {
-                    public GeomBuilder.Vec3f Get
+                    public Vec3f Get
                       (
                         int PointIndex
                       )
@@ -87,7 +90,7 @@ public class Compass
             /*Normal =*/
                 new Lathe.VectorFunc()
                   {
-                    public GeomBuilder.Vec3f Get
+                    public Vec3f Get
                       (
                         int PointIndex,
                         int SectorIndex, /* 0 .. NrSectors - 1 */
@@ -99,114 +102,71 @@ public class Compass
                       {
                         final float FaceAngle =
                             (float)(2.0 * Math.PI * SectorIndex / NrSectors);
-                        final GeomBuilder.Vec3f OrigNormal =
+                        final Vec3f OrigNormal =
                             Normals[PointIndex - (Upper ? 0 : 1)];
                         return
-                            new GeomBuilder.Vec3f
+                            new Vec3f
                               (
-                                OrigNormal.x * android.util.FloatMath.cos(FaceAngle),
+                                OrigNormal.x * FloatMath.cos(FaceAngle),
                                 OrigNormal.y,
-                                OrigNormal.x * android.util.FloatMath.sin(FaceAngle)
+                                OrigNormal.x * FloatMath.sin(FaceAngle)
                               );
                       } /*Get*/
                   } /*VectorFunc*/,
             /*TexCoord = */ null,
             /*VertexColor =*/ null,
-            /*NrSectors =*/ NrSectors
+            /*NrSectors =*/ NrSectors,
+            /*Uniforms =*/ null,
+            /*VertexColorCalc =*/
+                "    vec3 arrow_color = vec3(0.6, 0.6, 0.6);\n" +
+                "    vec3 light_direction = vec3(-0.7, 0.7, 0.0);\n" +
+                "    float light_brightness = 1.0;\n" +
+                "    float light_contrast = 0.5;\n" +
+                "    float attenuate = 1.2 - 0.4 * gl_Position.z;\n" +
+                "    frag_color = vec4\n" +
+                "      (\n" +
+                "            arrow_color\n" +
+                "        *\n" +
+                "            attenuate\n" +
+                "        *\n" +
+                "            (\n" +
+                "                light_brightness\n" +
+                "            -\n" +
+                "                light_contrast\n" +
+                "            +\n" +
+                "                    light_contrast\n" +
+                "                *\n" +
+                "                    dot\n" +
+                "                      (\n" +
+                "                        normalize(model_view * vec4(vertex_normal, 1.0)).xyz,\n" +
+                "                        normalize(light_direction)\n" +
+                "                      )\n" +
+                "            ),\n" +
+                "        1.0\n" +
+                "      );\n" +
+              /* simpleminded non-specular lighting */
+                "    back_color = vec4(vec3(0.5, 0.5, 0.5) * attenuate, 1.0);\n"
           );
       } /*Compass*/
 
-    public void Setup
-      (
-        int ViewWidth,
-        int ViewHeight
-      )
-      /* initial setup for drawing that doesn't need to be done for every frame. */
-      {
-        GLES11.glEnable(GLES11.GL_CULL_FACE);
-      /* GLES11.glEnable(GLES11.GL_MULTISAMPLE); */ /* doesn't seem to make any difference */
-        GLES11.glShadeModel(GLES11.GL_SMOOTH);
-        GLES11.glEnable(GLES11.GL_LIGHTING);
-        GLES11.glEnable(GLES11.GL_LIGHT0);
-        GLES11.glEnable(GLES11.GL_DEPTH_TEST);
-        GLES11.glViewport(0, 0, ViewWidth, ViewHeight);
-        GLES11.glMatrixMode(GLES11.GL_PROJECTION);
-        GLES11.glLoadIdentity();
-        GLES11.glFrustumf
-          (
-            /*l =*/ - (float)ViewWidth / ViewHeight,
-            /*r =*/ (float)ViewWidth / ViewHeight,
-            /*b =*/ -1.0f,
-            /*t =*/ 1.0f,
-            /*n =*/ 1.0f,
-            /*f =*/ 10.0f
-          );
-      } /*Setup*/
-
     public void Draw
       (
-        float Azi,
-          /* always Earth-horizontal, regardless of orientation of phone */
-        float Elev,
-          /* always around X-axis of phone, +ve is top-down, -ve is top-up */
-        float Roll
-          /* always around Y-axis of phone, +ve is anticlockwise
-            viewed from bottom, -ve is clockwise, until it reaches
-            ±90° when it its starts decreasing in magnitude again, so
-            0° is when phone is horizontal either face-up or face-down */
+        Mat4f ProjectionMatrix,
+        Mat4f ModelViewmatrix
       )
-      /* draws the compass arrow in the specified orientation. Setup must already
-        have been called on current GL context. */
+      /* draws the compass arrow through the specified transformations. */
       {
-        GLES11.glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-        GLES11.glClear(GLES11.GL_COLOR_BUFFER_BIT | GLES11.GL_DEPTH_BUFFER_BIT);
-        GLES11.glMatrixMode(GLES11.GL_MODELVIEW);
-        GLES11.glLoadIdentity();
-      /* Note that, by positioning the light _before_ doing all the
-        rotate calls, its position is fixed relative to the display,
-        not the compass arrow. */
-        GLES11.glLightfv
+        Arrow.Draw
           (
-            /*light =*/ GLES11.GL_LIGHT0,
-            /*pname =*/ GLES11.GL_POSITION,
-            /*params =*/ new float[] {0.0f, 2.0f, -2.0f, 1.0f},
-            /*offset =*/ 0
+            /*ProjectionMatrix =*/ ProjectionMatrix,
+            /*ModelViewMatrix =*/ ModelViewmatrix,
+            /*Uniforms =*/ null
           );
-        GLES11.glLightfv
-          (
-            /*light =*/ GLES11.GL_LIGHT0,
-            /*pname =*/ GLES11.GL_AMBIENT,
-            /*params =*/ new float[] {0.4f, 0.4f, 0.4f, 1.0f},
-            /*offset =*/ 0
-          );
-        GLES11.glLightfv
-          (
-            /*light =*/ GLES11.GL_LIGHT0,
-            /*pname =*/ GLES11.GL_SPECULAR,
-            /*params =*/ new float[] {0.7f, 0.7f, 0.7f, 1.0f},
-            /*offset =*/ 0
-          );
-        GLES11.glTranslatef(0, 0, -3.0f);
-        GLES11.glRotatef(Roll, 0, 1, 0);
-        GLES11.glRotatef(Elev, 1, 0, 0);
-        GLES11.glRotatef(Azi, 0, 0, 1);
-        GLES11.glScalef(2.0f, 2.0f, 2.0f);
-        GLES11.glFrontFace(GLES11.GL_CCW);
-        GLES11.glMaterialfv
-          (
-            /*face =*/ GLES11.GL_FRONT_AND_BACK,
-            /*pname =*/ GLES11.GL_AMBIENT,
-            /*params =*/ new float[] {0.4f, 0.4f, 0.4f, 1.0f},
-            /*offset =*/ 0
-          );
-        GLES11.glMaterialfv
-          (
-            /*face =*/ GLES11.GL_FRONT_AND_BACK,
-            /*pname =*/ GLES11.GL_SPECULAR,
-            /*params =*/ new float[] {0.6f, 0.6f, 0.36f, 1.0f},
-            /*offset =*/ 0
-          );
-        Arrow.Draw();
       } /*Draw*/
 
-  } /*Compass*/
+    public void Release()
+      {
+        Arrow.Release();
+      } /*Release*/
+
+  } /*Compass*/;

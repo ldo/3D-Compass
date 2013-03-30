@@ -2,3 +2,5 @@
 /keystore.properties
 /gen/
 /bin/
+/obj/
+/libs/

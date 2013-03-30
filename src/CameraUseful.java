@@ -242,18 +242,44 @@ public class CameraUseful
             displayed according to the screen orientation of DisplayActivity. */
           {
             final Camera.CameraInfo Info = GetCameraInfo(CameraID);
-            return
+            final boolean FrontFacing = Info.facing == Camera.CameraInfo.CAMERA_FACING_FRONT;
+            System.err.printf
+              (
+                "CameraUseful.RightOrientation camera %d frontfacing %s orientation %d° display rotation %d\n",
+                CameraID,
+                FrontFacing,
+                Info.orientation,
+                DisplayActivity.getWindowManager().getDefaultDisplay().getRotation()
+              ); /* debug */
+            final int Degrees =
                     (
-                        DisplayActivity.getWindowManager().getDefaultDisplay().getRotation() * -90
+                        Info.orientation
                     +
-                            (Info.facing == Camera.CameraInfo.CAMERA_FACING_BACK ? 1 : -1)
+                            DisplayActivity.getWindowManager().getDefaultDisplay().getRotation()
                         *
-                            Info.orientation
+                            90
+                        *
+                            (FrontFacing ? 1 : -1)
                     +
                         360
                     )
                 %
                     360;
+            System.err.printf
+              (
+                "CameraUseful.RightOrientation camera %d frontfacing %s orientation %d° display rotation %d, degrees %d return %d\n",
+                CameraID,
+                FrontFacing,
+                Info.orientation,
+                DisplayActivity.getWindowManager().getDefaultDisplay().getRotation(),
+                Degrees,
+                FrontFacing ? (360 - Degrees) % 360 : Degrees
+              ); /* debug */
+            return
+                FrontFacing ?
+                    (360 - Degrees) % 360
+                :
+                    Degrees;
           } /*RightOrientation*/
 
       } /*API9Stuff*/;

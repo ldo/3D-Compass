@@ -1,10 +1,31 @@
 package nz.gen.geek_central.Compass3D;
+/*
+    Generic management of an OpenGL display that is only updated on demand.
+    Caller provides an instance of the Handler interface (see below) to do
+    all the necessary OpenGL setup and drawing. (Re)drawing is triggered in
+    the standard way, by calling GLSurfaceView.requestRender() on this View.
+
+    Copyright 2013 by Lawrence D'Oliveiro <ldo@geek-central.gen.nz>.
+
+    Licensed under the Apache License, Version 2.0 (the "License"); you may not
+    use this file except in compliance with the License. You may obtain a copy of
+    the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+    License for the specific language governing permissions and limitations under
+    the License.
+*/
 
 import javax.microedition.khronos.opengles.GL10;
 
 public class MainView extends android.opengl.GLSurfaceView
   {
     public interface Handler
+      /* caller must provide an instance of this to do all the work */
       {
 
         public void Setup
@@ -23,6 +44,7 @@ public class MainView extends android.opengl.GLSurfaceView
           /* called when the GL context is being lost. */
 
       } /*Handler*/;
+
     private Handler HandleView;
 
     public void SetHandler

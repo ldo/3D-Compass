@@ -207,12 +207,13 @@ public class CameraList extends android.app.Activity
         Current = this;
         setContentView(R.layout.camera_list);
         TheCameras = new SelectedItemAdapter(this, R.layout.camera_list_item, getLayoutInflater());
+        TheCameras.setNotifyOnChange(false);
         TheCameras.clear();
         for (int i = 0; i < Camera.getNumberOfCameras(); ++i)
           {
             TheCameras.add(new CameraItem(i, i == CurCameraID));
           } /*for*/
-        TheCameras.notifyDataSetChanged(); /* is this necessary? */
+        TheCameras.notifyDataSetChanged();
         CameraListView = (android.widget.ListView)findViewById(R.id.list);
         CameraListView.setAdapter(TheCameras);
       } /*onCreate*/

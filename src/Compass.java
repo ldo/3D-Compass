@@ -17,7 +17,6 @@ package nz.gen.geek_central.Compass3D;
     the License.
 */
 
-import android.util.FloatMath;
 import nz.gen.geek_central.GLUseful.Mat4f;
 import nz.gen.geek_central.GLUseful.Vec3f;
 import nz.gen.geek_central.GLUseful.GeomBuilder;
@@ -65,8 +64,8 @@ public class Compass
                 new Vec3f(1.0f, 0.0f, 0.0f), /* body */
                 new Vec3f
                   (
-                    FloatMath.sqrt(0.5f),
-                    -FloatMath.sqrt(0.5f),
+                    (float)Math.sqrt(0.5f),
+                    -(float)Math.sqrt(0.5f),
                     0.0f
                   ), /* bevel */
                 new Vec3f(0.0f, -1.0f, 0.0f), /* base */
@@ -107,9 +106,9 @@ public class Compass
                         return
                             new Vec3f
                               (
-                                OrigNormal.x * FloatMath.cos(FaceAngle),
+                                OrigNormal.x * (float)Math.cos(FaceAngle),
                                 OrigNormal.y,
-                                OrigNormal.x * FloatMath.sin(FaceAngle)
+                                OrigNormal.x * (float)Math.sin(FaceAngle)
                               );
                       } /*Get*/
                   } /*VectorFunc*/,

@@ -21,7 +21,7 @@ package nz.gen.geek_central.GLUseful;
     Q: But doesn't that involve a whole lot of extra heap allocations?
     A: Isn't that the point of using Java?
 
-    Copyright 2011, 2012 by Lawrence D'Oliveiro <ldo@geek-central.gen.nz>.
+    Copyright 2011-2013 by Lawrence D'Oliveiro <ldo@geek-central.gen.nz>.
 
     Licensed under the Apache License, Version 2.0 (the "License"); you may not
     use this file except in compliance with the License. You may obtain a copy of
@@ -35,8 +35,6 @@ package nz.gen.geek_central.GLUseful;
     License for the specific language governing permissions and limitations under
     the License.
 */
-
-import android.util.FloatMath;
 
 public class Mat4f
   /* 4x4 matrices */
@@ -550,8 +548,8 @@ public class Mat4f
         float radians
       )
       {
-        final float cos = FloatMath.cos(radians);
-        final float sin = FloatMath.sin(radians);
+        final float cos = (float)Math.cos(radians);
+        final float sin = (float)Math.sin(radians);
         Mat4f m;
         switch (axis)
           {
@@ -608,13 +606,12 @@ public class Mat4f
       )
       /* generates a rotation about an arbitrary axis passing through the origin. */
       {
-      /* no FloatMath version of atan2 */
         final float zangle = (float)Math.atan2(axis.y, axis.x);
           /* rotate about z into x-z plane */
         final float yangle = (float)Math.atan2
           (
             axis.z,
-            FloatMath.sqrt(axis.y * axis.y + axis.x * axis.x)
+            Math.sqrt(axis.y * axis.y + axis.x * axis.x)
           );
           /* rotate within x-z plane about y to align with x-axis */
         return
@@ -656,7 +653,6 @@ public class Mat4f
       {
         return
             rotation(src.cross(dst).unit(), (float)Math.acos(src.unit().dot(dst.unit())));
-              /* no FloatMath.acos */
       } /*rotate_align*/
 
     public static Mat4f frustum

@@ -3,7 +3,7 @@ package nz.gen.geek_central.GLUseful;
     Easy construction of objects with a single axis of rotational symmetry,
     building on GeomBuilder.
 
-    Copyright 2011, 2012 by Lawrence D'Oliveiro <ldo@geek-central.gen.nz>.
+    Copyright 2011-2013 by Lawrence D'Oliveiro <ldo@geek-central.gen.nz>.
 
     Licensed under the Apache License, Version 2.0 (the "License"); you may not
     use this file except in compliance with the License. You may obtain a copy of
@@ -93,8 +93,8 @@ public class Lathe
             if (i < NrSectors)
               {
                 final float Angle = (float)(2.0 * Math.PI * i / NrSectors);
-                final float Cos = android.util.FloatMath.cos(Angle);
-                final float Sin = android.util.FloatMath.sin(Angle);
+                final float Cos = (float)Math.cos(Angle);
+                final float Sin = (float)Math.sin(Angle);
                 for (int j = 0; j < NrPoints; ++j)
                   {
                     final Vec3f Vertex = Point.Get(j);

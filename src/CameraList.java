@@ -128,7 +128,7 @@ public class CameraList extends android.app.Activity
               {
                 TheView = TemplateInflater.inflate(ResID, null);
               } /*if*/
-            final CameraItem ThisItem = (CameraItem)this.getItem(Position);
+            final CameraItem ThisItem = this.getItem(Position);
             ((android.widget.TextView)TheView.findViewById(R.id.camera_id)).setText
               (
                 Integer.toString(ThisItem.CameraID)

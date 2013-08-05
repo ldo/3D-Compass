@@ -97,7 +97,7 @@ public class CameraUseful
                               (
                                 Math.min
                                   (
-                                    (int)(
+                                    (
                                             Y
                                         +
                                             Cr
@@ -119,7 +119,7 @@ public class CameraUseful
                               (
                                 Math.min
                                   (
-                                    (int)(
+                                    (
                                             Y
                                         -
                                             (Cr >> 2)
@@ -147,7 +147,7 @@ public class CameraUseful
                           (
                             Math.min
                               (
-                                (int)(
+                                (
                                         Y
                                     +
                                         Cb

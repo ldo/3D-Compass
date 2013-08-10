@@ -2,7 +2,7 @@ package nz.gen.geek_central.GLUseful;
 /*
     Display of a Canvas-rendered image within an OpenGL view.
 
-    Copyright 2012 by Lawrence D'Oliveiro <ldo@geek-central.gen.nz>.
+    Copyright 2012, 2013 by Lawrence D'Oliveiro <ldo@geek-central.gen.nz>.
 
     Licensed under the Apache License, Version 2.0 (the "License"); you may not
     use this file except in compliance with the License. You may obtain a copy of
@@ -31,15 +31,22 @@ public class GLView
     public final int BitsWidth, BitsHeight;
 
     private final GLUseful.Program ViewProg;
-    private final int TextureID;
-    private final int MappingVar, VertexPositionVar;
+    private boolean Bound;
+    private int TextureID;
+    private int MappingVar, VertexPositionVar;
     private final GLUseful.FixedVec2Buffer ViewCorners;
     private final GLUseful.VertIndexBuffer ViewIndices;
 
     public GLView
       (
         int BitsWidth, /* dimensions of the Bitmap to create */
-        int BitsHeight
+        int BitsHeight,
+        String CustomFragShading,
+          /* optional replacement for fragment shader calculation,
+            defaults to "gl_FragColor = texture2D(view_image, image_coord);"
+            if omitted */
+        boolean BindNow
+          /* true to do GL calls now, false to defer to later call to Bind or Draw */
       )
       {
         this.BitsWidth = BitsWidth;
@@ -66,40 +73,25 @@ public class GLView
                 downwards, while OpenGL has Y increasing upwards */
             "  }/*main*/\n",
           /* fragment shader: */
-            String.format
-              (
-                GLUseful.StdLocale,
                 "precision mediump float;\n" +
                 "uniform sampler2D view_image;\n" +
                 "varying vec2 image_coord;\n" +
                 "\n" +
                 "void main()\n" +
-                "  {\n" +
-                "    gl_FragColor.rgba = texture2D(view_image, image_coord).%s;\n" +
-                "  }/*main*/\n",
-                /*IsBigEndian()*/false ? /* fixme: will this ever be true for Android? */
-                    "abgr"
+                "  {\n"
+            +
+                "    " +
+                (CustomFragShading != null ?
+                    CustomFragShading
                 :
-                    "rgba"
-              )
+                    "gl_FragColor = texture2D(view_image, image_coord);"
+                ) +
+                "\n"
+            +
+                "  }/*main*/\n",
+            BindNow
           );
-          {
-            final int[] TextureIDs = new int[1];
-            gl.glGenTextures(1, TextureIDs, 0);
-            TextureID = TextureIDs[0];
-          }
-        gl.glBindTexture(gl.GL_TEXTURE_2D, TextureID);
-        GLUseful.CheckError("binding current texture for view");
-        gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_S, gl.GL_CLAMP_TO_EDGE);
-        gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_T, gl.GL_CLAMP_TO_EDGE);
-        gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR);
-        gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR);
-        gl.glBindTexture(gl.GL_TEXTURE_2D, 0);
-        ViewProg.Use();
-        gl.glUniform1i(ViewProg.GetUniform("view_image", true), 0);
-        GLUseful.CheckError("setting view texture sampler");
-        MappingVar = ViewProg.GetUniform("mapping", true);
-        VertexPositionVar = ViewProg.GetAttrib("vertex_position", true);
+        Bound = false;
           {
             final java.util.ArrayList<GLUseful.Vec2f> Temp = new java.util.ArrayList<GLUseful.Vec2f>();
             for
@@ -127,7 +119,68 @@ public class GLView
             ViewIndices = new GLUseful.VertIndexBuffer(Temp, gl.GL_TRIANGLE_STRIP);
           }
         SendBits = true;
+        if (BindNow)
+          {
+            Bind();
+          } /*if*/
       } /*GLView*/
+
+    public GLView
+      (
+        int BitsWidth,
+        int BitsHeight,
+        boolean BindNow
+          /* true to do GL calls now, false to defer to later call to Bind or Draw */
+      )
+      {
+        this(BitsWidth, BitsHeight, null, BindNow);
+      } /*GLView*/
+
+    public void Bind()
+      {
+        if (!Bound)
+          {
+              {
+                final int[] TextureIDs = new int[1];
+                gl.glGenTextures(1, TextureIDs, 0);
+                TextureID = TextureIDs[0];
+              }
+            gl.glBindTexture(gl.GL_TEXTURE_2D, TextureID);
+            GLUseful.CheckError("binding current texture for view");
+            gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_S, gl.GL_CLAMP_TO_EDGE);
+            gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_T, gl.GL_CLAMP_TO_EDGE);
+            gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR);
+            gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR);
+            gl.glBindTexture(gl.GL_TEXTURE_2D, 0);
+            ViewProg.Use();
+            gl.glUniform1i(ViewProg.GetUniform("view_image", true), 0);
+            GLUseful.CheckError("setting view texture sampler");
+            MappingVar = ViewProg.GetUniform("mapping", true);
+            VertexPositionVar = ViewProg.GetAttrib("vertex_position", true);
+            Bound = true;
+          } /*if*/
+      } /*Bind*/
+
+    public void Unbind
+      (
+        boolean Release
+          /* true iff GL context still valid, so explicitly free up allocated resources.
+            false means GL context has gone (or is going), so simply forget allocated
+            GL resources without making any GL calls. */
+      )
+      /* frees up GL resources associated with this object. */
+      {
+        if (Bound)
+          {
+            ViewProg.Unbind(Release);
+            if (Release)
+              {
+                gl.glDeleteTextures(1, new int[] {TextureID}, 0);
+              } /*if*/
+            Bound = false;
+            Bits.recycle();
+          } /*if*/
+      } /*Unbind*/
 
     public void DrawChanged()
       /* call this to indicate that the bitmap has been changed and
@@ -145,6 +198,7 @@ public class GLView
       )
       /* renders the bitmap into the current GL context. */
       {
+        Bind();
         GLUseful.ClearError();
         ViewProg.Use();
         GLUseful.UniformMatrix4(MappingVar, Mapping);
@@ -199,12 +253,4 @@ public class GLView
           );
       } /*Draw*/
 
-    public void Release()
-      /* call this to free up GL and Bitmap resources. */
-      {
-        ViewProg.Release();
-        gl.glDeleteTextures(1, new int[] {TextureID}, 0);
-        Bits.recycle();
-      } /*Release*/
-
-  } /*GLView*/
+  } /*GLView*/;

@@ -433,16 +433,22 @@ public class Main extends android.app.Activity
             ViewRadius = Math.min(ViewWidth, ViewHeight) / 2.0f;
             if (Needle != null)
               {
-                Needle.Release();
+                Needle.Unbind(true);
                 Needle = null;
               } /*if*/
             if (Background != null) /* force re-creation to match view dimensions */
               {
-                Background.Release();
+                Background.Unbind(true);
                 Background = null;
               } /*if*/
-            Needle = new Compass();
-            Background = new GLView(ViewWidth, ViewHeight);
+            Needle = new Compass(true);
+            Background = new GLView
+              (
+                /*BitsWidth =*/ ViewWidth,
+                /*BitsHeight =*/ ViewHeight,
+                /*CustomFragShading =*/ null,
+                /*BindNow =*/ true
+              );
             gl.glEnable(gl.GL_CULL_FACE);
             gl.glViewport
               (

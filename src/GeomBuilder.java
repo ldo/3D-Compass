@@ -4,7 +4,7 @@ package nz.gen.geek_central.GLUseful;
     This version is for OpenGL-ES 2.0 and allows customization of the vertex
     shader for control of material properties, lighting etc.
 
-    Copyright 2011, 2012 by Lawrence D'Oliveiro <ldo@geek-central.gen.nz>.
+    Copyright 2011-2013 by Lawrence D'Oliveiro <ldo@geek-central.gen.nz>.
 
     Licensed under the Apache License, Version 2.0 (the "License"); you may not
     use this file except in compliance with the License. You may obtain a copy of
@@ -32,6 +32,8 @@ public class GeomBuilder
     AddQuad. Finally, call MakeObj to obtain a GeomBuilder.Obj that
     has a Draw method that will render the resulting geometry into a
     specified GL context.
+
+    GeomBuilder class itself makes no GL calls, only GeomBuilder.Obj does.
   */
   {
     static final android.opengl.GLES20 gl = GLUseful.gl; /* for easier references */
@@ -206,51 +208,6 @@ public class GeomBuilder
           } /*if*/
       } /*AddPoly*/
 
-    public enum ShaderVarTypes
-      {
-        FLOAT,
-        VEC3,
-        COLOR3,
-        COLOR4,
-      } /*ShaderVarTypes*/;
-
-    public static class ShaderVarDef
-      /* definition of a user shader variable */
-      {
-        public final String Name;
-        public final ShaderVarTypes Type;
-
-        public ShaderVarDef
-          (
-            String Name,
-            ShaderVarTypes Type
-          )
-          {
-            this.Name = Name.intern();
-            this.Type = Type;
-          } /*ShaderVarDef*/
-
-      } /*ShaderVarDef*/;
-
-    public static class ShaderVarVal
-      /* specification of the value for a user shader variable */
-      {
-        public final String Name;
-        public final Object Value;
-          /* Float for FLOAT, array of 3 floats for VEC3, GLUseful.Color for COLOR3 or COLOR4 */
-
-        public ShaderVarVal
-          (
-            String Name,
-            Object Value
-          )
-          {
-            this.Name = Name.intern();
-            this.Value = Value;
-          } /*ShaderVarVal*/
-
-      } /*ShaderVarVal*/;
-
     public static class Obj
       /* representation of complete object geometry. */
       {
@@ -263,27 +220,11 @@ public class GeomBuilder
         private final GLUseful.Program Render;
         public final Vec3f BoundMin, BoundMax;
 
-        private final int ModelViewTransformVar, ProjectionTransformVar;
-        private final int VertexPositionVar, VertexNormalVar, VertexColorVar;
-
-        private static class UniformInfo
-          {
-            public final ShaderVarTypes Type;
-            public final int Loc;
-
-            public UniformInfo
-              (
-                ShaderVarTypes Type,
-                int Loc
-              )
-              {
-                this.Type = Type;
-                this.Loc = Loc;
-              } /*UniformInfo*/
-
-          } /*UniformInfo*/;
-
-        private final java.util.HashMap<String, UniformInfo> UniformLocs;
+        private boolean Bound;
+        private final GLUseful.ShaderVarDef[] UniformDefs;
+        private int ModelViewTransformVar, ProjectionTransformVar;
+        private int VertexPositionVar, VertexNormalVar, VertexColorVar;
+        private java.util.Map<String, GLUseful.UniformLocInfo> UniformLocs;
 
         private Obj
           (
@@ -293,13 +234,15 @@ public class GeomBuilder
             GLUseful.FixedVec3Buffer TexCoordBuffer, /* optional, NYI */
             GLUseful.ByteColorBuffer ColorBuffer, /* optional */
             GLUseful.VertIndexBuffer IndexBuffer,
-            ShaderVarDef[] Uniforms,
+            GLUseful.ShaderVarDef[] Uniforms,
               /* optional additional uniform variable definitions for vertex shader */
             String VertexColorCalc,
               /* optional, compiled as part of vertex shader to implement lighting etc, must
                 assign value to "frag_color" variable */
             Vec3f BoundMin,
-            Vec3f BoundMax
+            Vec3f BoundMax,
+            boolean BindNow
+              /* true to do GL calls now, false to defer to later call to Bind or Draw */
           )
           {
             this.Shaded = Shaded;
@@ -310,6 +253,7 @@ public class GeomBuilder
             this.IndexBuffer = IndexBuffer;
             this.BoundMin = BoundMin;
             this.BoundMax = BoundMax;
+            UniformDefs = Uniforms;
             final StringBuilder VS = new StringBuilder();
             VS.append("uniform mat4 model_view, projection;\n");
             VS.append("attribute vec3 vertex_position;\n");
@@ -327,26 +271,7 @@ public class GeomBuilder
               } /*if*/
             if (Uniforms != null)
               {
-                for (ShaderVarDef VarDef : Uniforms)
-                  {
-                    VS.append("uniform ");
-                    switch (VarDef.Type)
-                      {
-                    case FLOAT:
-                        VS.append("float");
-                    break;
-                    case VEC3:
-                    case COLOR3:
-                        VS.append("vec3");
-                    break;
-                    case COLOR4:
-                        VS.append("vec4");
-                    break;
-                      } /*switch*/
-                    VS.append(" ");
-                    VS.append(VarDef.Name);
-                    VS.append(";\n");
-                  } /*for*/
+                GLUseful.DefineUniforms(VS, Uniforms);
               } /*if*/
             if (Shaded)
               {
@@ -412,39 +337,60 @@ public class GeomBuilder
                         "    gl_FragColor = frag_color;\n"
                     )
                 +
-                    "  } /*main*/\n"
+                    "  } /*main*/\n",
+                BindNow
               );
-            ModelViewTransformVar = Render.GetUniform("model_view", true);
-            ProjectionTransformVar = Render.GetUniform("projection", true);
-            VertexPositionVar = Render.GetAttrib("vertex_position", true);
-            VertexNormalVar = Render.GetAttrib("vertex_normal", false);
-            VertexColorVar = Render.GetAttrib("vertex_color", false);
-            if (Uniforms != null)
+            Bound = false;
+            if (BindNow)
               {
-                UniformLocs = new java.util.HashMap<String, UniformInfo>();
-                for (ShaderVarDef VarDef : Uniforms)
-                  {
-                    UniformLocs.put
-                      (
-                        VarDef.Name,
-                        new UniformInfo(VarDef.Type, Render.GetUniform(VarDef.Name, false))
-                      );
-                  } /*for*/
-              }
-            else
-              {
-                UniformLocs = null;
+                Bind();
               } /*if*/
           } /*Obj*/
+
+        public void Bind()
+          {
+            if (!Bound)
+              {
+                Render.Bind();
+                ModelViewTransformVar = Render.GetUniform("model_view", true);
+                ProjectionTransformVar = Render.GetUniform("projection", true);
+                VertexPositionVar = Render.GetAttrib("vertex_position", true);
+                VertexNormalVar = Render.GetAttrib("vertex_normal", false);
+                VertexColorVar = Render.GetAttrib("vertex_color", false);
+                if (UniformDefs != null)
+                  {
+                    UniformLocs = GLUseful.GetUniformLocs(UniformDefs, Render);
+                  }
+                else
+                  {
+                    UniformLocs = null;
+                  } /*if*/
+                Bound = true;
+              } /*if*/
+          } /*Bind*/
+
+        public void Unbind
+          (
+            boolean Release
+              /* true iff GL context still valid, so explicitly free up allocated resources.
+                false means GL context has gone (or is going), so simply forget allocated
+                GL resources without making any GL calls. */
+          )
+          /* frees up GL resources associated with this object. */
+          {
+            Render.Unbind(Release);
+            Bound = false;
+          } /*Unbind*/
 
         public void Draw
           (
             Mat4f ProjectionMatrix,
             Mat4f ModelViewMatrix,
-            ShaderVarVal[] Uniforms /* optional additional values for uniforms */
+            GLUseful.ShaderVarVal[] Uniforms /* optional additional values for uniforms */
           )
           /* actually renders the geometry into the current GL context. */
           {
+            Bind();
             Render.Use();
             GLUseful.UniformMatrix4(ProjectionTransformVar, ProjectionMatrix);
             GLUseful.UniformMatrix4(ModelViewTransformVar, ModelViewMatrix);
@@ -463,58 +409,23 @@ public class GeomBuilder
               } /*if*/
             if (Uniforms != null)
               {
-                for (ShaderVarVal VarRef : Uniforms)
-                  {
-                    final UniformInfo VarInfo = UniformLocs.get(VarRef.Name);
-                    if (VarInfo == null)
-                      {
-                        throw new RuntimeException("no such uniform variable “" + VarRef.Name + "”");
-                      } /*if*/
-                    switch (VarInfo.Type)
-                      {
-                    case FLOAT:
-                        gl.glUniform1f(VarInfo.Loc, (Float)VarRef.Value);
-                    break;
-                    case VEC3:
-                          {
-                            final float[] Value = (float[])VarRef.Value;
-                            gl.glUniform3f(VarInfo.Loc, Value[0], Value[1], Value[2]);
-                          }
-                    break;
-                    case COLOR3:
-                          {
-                            final GLUseful.Color TheColor = (GLUseful.Color)VarRef.Value;
-                            gl.glUniform3f(VarInfo.Loc, TheColor.r, TheColor.g, TheColor.b);
-                          }
-                    break;
-                    case COLOR4:
-                          {
-                            final GLUseful.Color TheColor = (GLUseful.Color)VarRef.Value;
-                            gl.glUniform4f(VarInfo.Loc, TheColor.r, TheColor.g, TheColor.b, TheColor.a);
-                          }
-                    break;
-                      } /*switch*/
-                  } /*for*/
+                GLUseful.SetUniformVals(Uniforms, UniformLocs);
               } /*if*/
             IndexBuffer.Draw();
             Render.Unuse();
           } /*Draw*/
 
-        public void Release()
-          /* frees up GL resources associated with this object. */
-          {
-            Render.Release();
-          } /*Release*/
-
       } /*Obj*/;
 
     public Obj MakeObj
       (
-        ShaderVarDef[] Uniforms,
+        GLUseful.ShaderVarDef[] Uniforms,
           /* optional additional uniform variable definitions for vertex shader */
-        String VertexColorCalc
+        String VertexColorCalc,
           /* optional, compiled as part of vertex shader to implement lighting etc, must
             assign value to "frag_color" variable */
+        boolean BindNow
+          /* true to do GL calls now, false to defer to later call to Bind or Draw */
       )
       /* constructs and returns the final geometry ready for rendering. */
       {
@@ -551,8 +462,9 @@ public class GeomBuilder
                 Uniforms,
                 VertexColorCalc,
                 BoundMin,
-                BoundMax
+                BoundMax,
+                BindNow
               );
       } /*MakeObj*/
 
-  } /*GeomBuilder*/
+  } /*GeomBuilder*/;

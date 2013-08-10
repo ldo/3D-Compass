@@ -34,7 +34,10 @@ public class Compass
 
     private final GeomBuilder.Obj Arrow;
 
-    public Compass()
+    public Compass
+      (
+        boolean BindNow
+      )
       {
         final float OuterTiltCos =
             HeadThickness / (float)Math.hypot(HeadThickness, HeadLengthOuter);
@@ -144,7 +147,8 @@ public class Compass
                 "        1.0\n" +
                 "      );\n" +
               /* simpleminded non-specular lighting */
-                "    back_color = vec4(vec3(0.5, 0.5, 0.5) * attenuate, 1.0);\n"
+                "    back_color = vec4(vec3(0.5, 0.5, 0.5) * attenuate, 1.0);\n",
+            /*BindNow =*/ BindNow
           );
       } /*Compass*/
 
@@ -163,9 +167,16 @@ public class Compass
           );
       } /*Draw*/
 
-    public void Release()
+    public void Unbind
+      (
+        boolean Release
+          /* true iff GL context still valid, so explicitly free up allocated resources.
+            false means GL context has gone (or is going), so simply forget allocated
+            GL resources without making any GL calls. */
+      )
+      /* frees up GL resources associated with this object. */
       {
-        Arrow.Release();
+        Arrow.Unbind(Release);
       } /*Release*/
 
   } /*Compass*/;

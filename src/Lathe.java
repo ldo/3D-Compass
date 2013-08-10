@@ -67,11 +67,13 @@ public class Lathe
         VectorFunc TexCoord, /* optional to compute texture coordinate at each point */
         ColorFunc VertexColor, /* optional to compute colour at each point */
         int NrSectors, /* must be at least 3 */
-        GeomBuilder.ShaderVarDef[] Uniforms,
+        GLUseful.ShaderVarDef[] Uniforms,
           /* optional additional uniform variable definitions for vertex shader */
-        String VertexColorCalc
+        String VertexColorCalc,
           /* optional, compiled as part of vertex shader to implement lighting etc, must
             assign value to "frag_color" variable */
+        boolean BindNow
+          /* true to do GL calls now, false to defer to later call to Bind or Draw */
       )
       /* rotates Points around Y axis with NrSectors steps, invoking the
         specified callbacks to obtain normal vectors, texture coordinates
@@ -189,7 +191,7 @@ public class Lathe
             ++i;
           } /*for*/
         return 
-            Geom.MakeObj(Uniforms, VertexColorCalc);
+            Geom.MakeObj(Uniforms, VertexColorCalc, BindNow);
       } /*Make*/
 
-  } /*Lathe*/
+  } /*Lathe*/;

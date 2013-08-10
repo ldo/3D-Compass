@@ -442,13 +442,7 @@ public class Main extends android.app.Activity
                 Background = null;
               } /*if*/
             Needle = new Compass(true);
-            Background = new GLView
-              (
-                /*BitsWidth =*/ ViewWidth,
-                /*BitsHeight =*/ ViewHeight,
-                /*CustomFragShading =*/ null,
-                /*BindNow =*/ true
-              );
+            Background = new GLView(ViewWidth, ViewHeight, true);
             gl.glEnable(gl.GL_CULL_FACE);
             gl.glViewport
               (

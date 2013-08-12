@@ -18,6 +18,7 @@ package nz.gen.geek_central.Compass3D;
 */
 
 import android.graphics.Matrix;
+import android.graphics.ImageFormat;
 import android.widget.Toast;
 import android.view.View;
 import nz.gen.geek_central.GLUseful.Mat4f;
@@ -54,6 +55,17 @@ public class Main extends android.app.Activity
     final long[] FrameTimes = new long[25];
     boolean Active = false, MainViewActive = false;
     int NextFrameTime = 0;
+
+    private static java.util.Map<Integer, String> ImageFormats = new java.util.HashMap<Integer, String>();
+    static
+      {
+        ImageFormats.put(ImageFormat.JPEG, "JPEG");
+        ImageFormats.put(ImageFormat.NV16, "NV16");
+        ImageFormats.put(ImageFormat.NV21, "NV21");
+        ImageFormats.put(ImageFormat.RGB_565, "RGB_565");
+        ImageFormats.put(ImageFormat.YUY2, "YUY2");
+        ImageFormats.put(ImageFormat.YV12, "YV12");
+      } /*static*/
 
     private class CommonListener
         implements
@@ -145,10 +157,11 @@ public class Main extends android.app.Activity
 
           } /*CameraSetupExtra*/
 
-        private void DumpList
+        private <EltType> void DumpList
           (
             String Description,
-            java.util.List<?> TheList,
+            java.util.List<EltType> TheList,
+            java.util.Map<EltType, String> Symbols,
             java.io.PrintStream Out
           )
           {
@@ -156,15 +169,20 @@ public class Main extends android.app.Activity
             if (TheList != null)
               {
                 Out.print(" ");
-                boolean first = true;
-                for (Object val : TheList)
+                boolean First = true;
+                for (Object Val : TheList)
                   {
-                    if (!first)
+                    if (!First)
                       {
                         Out.print(", ");
                       } /*if*/
-                    Out.print(val);
-                    first = false;
+                    Out.print(Val);
+                    if (Symbols != null)
+                      {
+                        final String Name = Symbols.get(Val);
+                        Out.print("(" + (Name != null ? Name : "?") + ")");
+                      } /*if*/
+                    First = false;
                   } /*for*/
               }
             else
@@ -172,6 +190,16 @@ public class Main extends android.app.Activity
                 Out.print("(none)");
               } /*if*/
             Out.println();
+          } /*DumpList*/
+
+        private <EltType> void DumpList
+          (
+            String Description,
+            java.util.List<EltType> TheList,
+            java.io.PrintStream Out
+          )
+          {
+            DumpList(Description, TheList, null, Out);
           } /*DumpList*/
 
         private void StartCamera()
@@ -249,12 +277,14 @@ public class Main extends android.app.Activity
                       (
                         " Supported picture formats:",
                         Parms.getSupportedPictureFormats(),
+                        ImageFormats,
                         System.err
                       );
                     DumpList
                       (
                         " Supported preview formats:",
                         Parms.getSupportedPreviewFormats(),
+                        ImageFormats,
                         System.err
                       );
                     DumpList
@@ -686,4 +716,4 @@ public class Main extends android.app.Activity
           } /*if*/
       } /*onActivityResult*/
 
-  } /*Main*/
+  } /*Main*/;

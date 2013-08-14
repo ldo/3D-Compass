@@ -76,7 +76,6 @@ public class Main extends android.app.Activity
         private android.hardware.Camera TheCamera;
         private CameraSetupExtra TheCameraExtra = null;
         private android.graphics.Point PreviewSize, RotatedPreviewSize;
-        private float ViewRadius;
         private Compass Needle;
         private GLView Background;
         private int[] ImageBuf;
@@ -244,7 +243,6 @@ public class Main extends android.app.Activity
                       ).show();
                   } /*try*/
                 PreviewSize = CameraUseful.GetLargestPreviewSizeAtMost(TheCamera, Graphical.getWidth(), Graphical.getHeight());
-                System.err.printf("Setting preview size to %d*%d (at most %d*%d)\n", PreviewSize.x, PreviewSize.y, Graphical.getWidth(), Graphical.getHeight()); /* debug */
                 final android.hardware.Camera.Parameters Parms = TheCamera.getParameters();
                   { /* debug */
                     System.err.println("Main.StartCamera initial params:");
@@ -313,6 +311,7 @@ public class Main extends android.app.Activity
                     (Rotation & 1) != 0 ? PreviewSize.y : PreviewSize.x,
                     (Rotation & 1) != 0 ? PreviewSize.x : PreviewSize.y
                   );
+                System.err.printf("Set preview size to %d*%d, rotated %d*%d (at most %d*%d)\n", PreviewSize.x, PreviewSize.y, RotatedPreviewSize.x, RotatedPreviewSize.y, Graphical.getWidth(), Graphical.getHeight()); /* debug */
                 ImageBuf = new int[PreviewSize.x * PreviewSize.y];
                 TheCamera.setPreviewCallback(this);
               /* Note I don't call TheCamera.setPreviewDisplay, even though the docs
@@ -460,7 +459,6 @@ public class Main extends android.app.Activity
           )
           /* initial setup for drawing that doesn't need to be done for every frame. */
           {
-            ViewRadius = Math.min(ViewWidth, ViewHeight) / 2.0f;
             if (Needle != null)
               {
                 Needle.Unbind(true);
@@ -474,20 +472,15 @@ public class Main extends android.app.Activity
             Needle = new Compass(true);
             Background = new GLView(ViewWidth, ViewHeight, true);
             gl.glEnable(gl.GL_CULL_FACE);
-            gl.glViewport
-              (
-                Math.round(ViewWidth / 2.0f - ViewRadius),
-                Math.round(ViewHeight / 2.0f - ViewRadius),
-                Math.round(2.0f * ViewRadius),
-                Math.round(2.0f * ViewRadius)
-              );
+            gl.glViewport(0, 0, ViewWidth, ViewHeight);
+            final float ViewSize = Math.max(ViewWidth, ViewHeight);
             ProjectionMatrix =
                     Mat4f.frustum
                       (
-                        /*L =*/ -0.1f,
-                        /*R =*/ 0.1f,
-                        /*B =*/ -0.1f,
-                        /*T =*/ 0.1f,
+                        /*L =*/ - ViewSize / ViewHeight * 0.1f,
+                        /*R =*/ ViewSize / ViewHeight * 0.1f,
+                        /*B =*/ - ViewSize / ViewWidth * 0.1f,
+                        /*T =*/ ViewSize / ViewWidth * 0.1f,
                         /*N =*/ 0.1f,
                         /*F =*/ 3.1f
                       )

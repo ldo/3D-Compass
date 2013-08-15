@@ -55,23 +55,24 @@ public class MainView extends android.opengl.GLSurfaceView
         HandleView = NewHandler;
       } /*SetHandler*/
 
-    private class MainViewRenderer implements Renderer
+    public class MainViewRenderer extends nz.gen.geek_central.GLUseful.BaseRenderer
       {
 
-        public void onDrawFrame
-          (
-            GL10 _gl
-          )
+        public MainViewRenderer()
+          {
+            super(MainView.this);
+          } /*MainViewRenderer*/
+
+        public void OnDrawFrame()
           {
             if (HandleView != null)
               {
                 HandleView.Draw();
               } /*if*/
-          } /*onDrawFrame*/
+          } /*OnDrawFrame*/
 
-        public void onSurfaceChanged
+        public void OnSurfaceChanged
           (
-            GL10 _gl,
             int ViewWidth,
             int ViewHeight
           )
@@ -80,20 +81,19 @@ public class MainView extends android.opengl.GLSurfaceView
               {
                 HandleView.Setup(ViewWidth, ViewHeight);
               } /*if*/
-          } /*onSurfaceChanged*/
+          } /*OnSurfaceChanged*/
 
-        public void onSurfaceCreated
+        public void OnSurfaceCreated
           (
-            GL10 _gl,
             javax.microedition.khronos.egl.EGLConfig Config
           )
           {
           /* leave all actual work to onSurfaceChanged */
-          } /*onSurfaceCreated*/
+          } /*OnSurfaceCreated*/
 
       } /*MainViewRenderer*/;
 
-    final MainViewRenderer Render = new MainViewRenderer();
+    public final MainViewRenderer Render = new MainViewRenderer();
 
     public MainView
       (

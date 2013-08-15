@@ -25,10 +25,90 @@ import nz.gen.geek_central.GLUseful.Mat4f;
 import nz.gen.geek_central.GLUseful.Vec3f;
 import nz.gen.geek_central.GLUseful.GLUseful;
 import static nz.gen.geek_central.GLUseful.GLUseful.gl;
-import nz.gen.geek_central.GLUseful.GLView;
+import nz.gen.geek_central.GLUseful.GLTextureView;
+import nz.gen.geek_central.GLUseful.GLBitmapView;
 
 public class Main extends android.app.Activity
   {
+
+    public static boolean ClassExists
+      (
+        String ClassName
+      )
+      /* does the named class exist. */
+      {
+        boolean Exists;
+        try
+          {
+            Exists =
+                    Class.forName(ClassName)
+                !=
+                    null;
+          }
+        catch (ClassNotFoundException Nope)
+          {
+            Exists = false;
+          } /*try*/
+        return
+            Exists;
+      } /*ClassExists*/
+
+    public static boolean ClassHasMethod
+      (
+        String ClassName,
+        String MethodName,
+        Class<?>... ArgTypes
+      )
+      /* does the named class have a method with the specified argument types. */
+      {
+        boolean HasIt;
+        try
+          {
+            HasIt =
+                    Class.forName(ClassName)
+                        .getDeclaredMethod(MethodName, ArgTypes)
+                !=
+                    null;
+          }
+        catch (NoSuchMethodException Nope)
+          {
+            HasIt = false;
+          }
+        catch (ClassNotFoundException Huh)
+          {
+            throw new RuntimeException(Huh.toString());
+          } /*try*/
+        return
+            HasIt;
+      } /*ClassHasMethod*/
+
+    public static final boolean HasPreviewTextures =
+        ClassHasMethod
+          (
+            "android.hardware.Camera",
+            "setPreviewTexture",
+            android.graphics.SurfaceTexture.class
+          );
+    public static final boolean HasSurfaceTextureRelease =
+            ClassExists("android.graphics.SurfaceTexture")
+        &&
+            ClassHasMethod("android.graphics.SurfaceTexture", "release");
+
+    private static void SetCameraPreviewTexture
+      (
+        android.hardware.Camera TheCamera,
+        android.graphics.SurfaceTexture TheTexture
+      )
+      {
+        try
+          {
+            TheCamera.setPreviewTexture(TheTexture);
+          }
+        catch (java.io.IOException What)
+          {
+            throw new RuntimeException(What.toString());
+          } /*try*/
+      } /*SetCameraPreviewTexture*/
 
     private java.util.Map<android.view.MenuItem, Runnable> OptionsMenu;
     private java.util.Map<android.view.MenuItem, Runnable> ContextMenu;
@@ -74,17 +154,18 @@ public class Main extends android.app.Activity
             MainView.Handler
       {
         private android.hardware.Camera TheCamera;
-        private CameraSetupExtra TheCameraExtra = null;
         private android.graphics.Point PreviewSize, RotatedPreviewSize;
         private Compass Needle;
-        private GLView Background;
+        private GLBitmapView BackgroundBits;
+        private GLTextureView BackgroundTex;
+        private android.graphics.SurfaceTexture BackgroundTexture;
         private int[] ImageBuf;
         private int Rotation;
-        private Mat4f ProjectionMatrix;
+        private Mat4f TextureMatrix, ProjectionMatrix;
 
         public CommonListener()
           {
-          /* nothing to do for now */
+            TextureMatrix = Mat4f.identity(); /* default */
           } /*CommonListener*/
 
         public void Start()
@@ -128,33 +209,6 @@ public class Main extends android.app.Activity
                 SensorMan.unregisterListener(this, CompassSensor);
               } /*if*/
           } /*StopCompass*/
-
-        private class CameraSetupExtra
-          /* does extra setup specific to Android 3.0 and later. Instantiation
-            will fail with NoClassDefFoundError on earlier versions. */
-          {
-            private final android.graphics.SurfaceTexture DummyTexture;
-            private final android.hardware.Camera TheCamera;
-
-            public CameraSetupExtra
-              (
-                android.hardware.Camera TheCamera
-              )
-              {
-                this.TheCamera = TheCamera;
-                int[] ID = new int[1];
-                gl.glGenTextures(1, ID, 0);
-                DummyTexture = new android.graphics.SurfaceTexture(ID[0]);
-                TheCamera.setPreviewTexture(DummyTexture);
-              } /*CameraSetupExtra*/
-
-            public void Release()
-              {
-                TheCamera.setPreviewTexture(null);
-              /* DummyTexture.release(); */ /* API 14 or later only */
-              } /*Release*/
-
-          } /*CameraSetupExtra*/
 
         private <EltType> void DumpList
           (
@@ -212,6 +266,7 @@ public class Main extends android.app.Activity
                     Main.this.getWindowManager().getDefaultDisplay().getOrientation(),
                     TheCameraID
                   ); /* debug */
+                if (false) /* debug */
                 try
                   {
                     final int RightOrientation = CameraUseful.RightOrientation(Main.this, TheCameraID);
@@ -311,24 +366,34 @@ public class Main extends android.app.Activity
                     (Rotation & 1) != 0 ? PreviewSize.y : PreviewSize.x,
                     (Rotation & 1) != 0 ? PreviewSize.x : PreviewSize.y
                   );
-                System.err.printf("Set preview size to %d*%d, rotated %d*%d (at most %d*%d)\n", PreviewSize.x, PreviewSize.y, RotatedPreviewSize.x, RotatedPreviewSize.y, Graphical.getWidth(), Graphical.getHeight()); /* debug */
-                ImageBuf = new int[PreviewSize.x * PreviewSize.y];
+                System.err.printf("Set preview size to %d*%d, rotated %d*%d (at most %d*%d), HasPreviewTextures = %s\n", PreviewSize.x, PreviewSize.y, RotatedPreviewSize.x, RotatedPreviewSize.y, Graphical.getWidth(), Graphical.getHeight(), HasPreviewTextures); /* debug */
                 TheCamera.setPreviewCallback(this);
-              /* Note I don't call TheCamera.setPreviewDisplay, even though the docs
-                say this is necessary. I don't want to do that, because I don't want
-                any preview to appear on-screen. I got away with that on an HTC Desire
-                (Android 2.2), but it apears the Samsung Galaxy Nexus (Android 4.0) is
-                not so forgiving. Luckily Honeycomb and later offer setPreviewTexture
-                as an alternative. So I set a dummy one of these. However, this seems
-                to make for a horrible frame rate. I'll have to see how to remedy
-                that later (fixme!). */
-                try
+                if (HasPreviewTextures)
                   {
-                    TheCameraExtra = new CameraSetupExtra(TheCamera);
+                    if (BackgroundTexture == null)
+                      {
+                        System.err.printf("3DCompass BackgroundTex texture ID = %d\n", BackgroundTex.GetTextureID()); /* debug */
+                        BackgroundTexture = new android.graphics.SurfaceTexture(BackgroundTex.GetTextureID());
+                        BackgroundTexture.setOnFrameAvailableListener /* debug */
+                          (
+                            new android.graphics.SurfaceTexture.OnFrameAvailableListener()
+                              {
+                                public void onFrameAvailable
+                                  (
+                                    android.graphics.SurfaceTexture TheTexture
+                                  )
+                                  {
+                                    System.err.println("3DCompass.Main SurfaceTexture frame available");
+                                  } /*onFrameAvailable*/
+                              } /*SurfaceTexture.OnFrameAvailableListener*/
+                          );
+                      } /*if*/
+                    SetCameraPreviewTexture(TheCamera, BackgroundTexture);
                   }
-                catch (NoClassDefFoundError TooOld)
+                else
                   {
-                  } /*try*/
+                    ImageBuf = new int[PreviewSize.x * PreviewSize.y];
+                  } /*if*/
                 TheCamera.startPreview();
               }
             else
@@ -342,10 +407,9 @@ public class Main extends android.app.Activity
             if (TheCamera != null)
               {
                 TheCamera.stopPreview();
-                if (TheCameraExtra != null)
+                if (BackgroundTexture != null)
                   {
-                    TheCameraExtra.Release();
-                    TheCameraExtra = null;
+                    SetCameraPreviewTexture(TheCamera, null);
                   } /*if*/
                 TheCamera.setPreviewCallback(null);
                 TheCamera.release();
@@ -438,15 +502,46 @@ public class Main extends android.app.Activity
               {
                 Message2View.setText(String.format("Camera fps %.2f", FrameRate));
               } /*if*/
-            CameraUseful.DecodeNV21
-              (
-                /*SrcWidth =*/ PreviewSize.x,
-                /*SrcHeight =*/ PreviewSize.y,
-                /*Data =*/ Data,
-                /*Rotate =*/ CameraUseful.CanTellCameraPresent() ? 0 : Rotation,
-                /*Alpha =*/ 255,
-                /*Pixels =*/ ImageBuf
-              );
+            if (BackgroundTexture != null) /* TBD race condition with GL thread setting to null! */
+              {
+                Graphical.Render.Synchronize
+                  (
+                    new Runnable()
+                      {
+                        public void run()
+                          {
+                            BackgroundTexture.updateTexImage();
+                          } /*run*/
+                      } /*Runnable*/
+                  );
+                final float[] m = new float[16];
+                BackgroundTexture.getTransformMatrix(m);
+                TextureMatrix = new Mat4f(m);
+                  { /* debug */
+                    System.err.print("3DCompass TextureMatrix = [");
+                    for (int i = 0; i < 16; ++i)
+                      {
+                        if (i != 0)
+                          {
+                            System.err.print(",");
+                          } /*if*/
+                        System.err.printf("%.3f", m[i]);
+                      } /*for*/
+                    System.err.println("]");
+                  } /* debug */
+              }
+            else if (ImageBuf != null) /* can still get preview frames during rotate? */
+              {
+                CameraUseful.DecodeNV21
+                  (
+                    /*SrcWidth =*/ PreviewSize.x,
+                    /*SrcHeight =*/ PreviewSize.y,
+                    /*Data =*/ Data,
+                    /*Rotate =*/ CameraUseful.CanTellCameraPresent() ? 0 : Rotation,
+                    /*Alpha =*/ 255,
+                    /*Pixels =*/ ImageBuf
+                  );
+              } /*if*/
             Graphical.requestRender();
           } /*onPreviewFrame*/
 
@@ -464,13 +559,40 @@ public class Main extends android.app.Activity
                 Needle.Unbind(true);
                 Needle = null;
               } /*if*/
-            if (Background != null) /* force re-creation to match view dimensions */
+            if (BackgroundTex != null) /* force re-creation to match view dimensions */
               {
-                Background.Unbind(true);
-                Background = null;
+                if (BackgroundTexture != null)
+                  {
+                    if (TheCamera != null)
+                      {
+                        SetCameraPreviewTexture(TheCamera, null);
+                      } /*if*/
+                    if (HasSurfaceTextureRelease)
+                      {
+                        BackgroundTexture.release();
+                      } /*if*/
+                    BackgroundTexture = null;
+                  } /*if*/
+                BackgroundTex.Unbind(true);
+                BackgroundTex = null;
+                BackgroundBits = null;
               } /*if*/
             Needle = new Compass(true);
-            Background = new GLView(ViewWidth, ViewHeight, true);
+            if (HasPreviewTextures)
+              {
+                BackgroundTex = new GLTextureView
+                  (
+                    /*CustomFragShading =*/ null,
+                    /*InvertY =*/ false,
+                    /*IsSurfaceTexture =*/ true,
+                    /*BindNow =*/ true
+                  );
+              }
+            else
+              {
+                BackgroundBits = new GLBitmapView(ViewWidth, ViewHeight, true);
+                BackgroundTex = BackgroundBits;
+              } /*if*/
             gl.glEnable(gl.GL_CULL_FACE);
             gl.glViewport(0, 0, ViewWidth, ViewHeight);
             final float ViewSize = Math.max(ViewWidth, ViewHeight);
@@ -507,39 +629,50 @@ public class Main extends android.app.Activity
         public void Draw()
           /* generates the complete composite display. */
           {
-              {
-                final android.graphics.Canvas g = Background.Draw;
-                g.drawColor(0, android.graphics.PorterDuff.Mode.SRC);
-                  /* initialize all pixels to fully transparent */
-                if (ImageBuf != null)
-                  {
-                    g.drawBitmap
-                      (
-                        /*colors =*/ ImageBuf,
-                        /*offset =*/ 0,
-                        /*stride =*/ RotatedPreviewSize.x,
-                        /*x =*/ (Graphical.getWidth() - RotatedPreviewSize.x) / 2,
-                        /*y =*/ (Graphical.getHeight() - RotatedPreviewSize.y) / 2,
-                        /*width =*/ RotatedPreviewSize.x,
-                        /*height =*/ RotatedPreviewSize.y,
-                        /*hasAlpha =*/ true,
-                        /*paint =*/ null
-                      );
-                  } /*if*/
-                Background.DrawChanged();
-              }
             GLUseful.ClearColor(new GLUseful.Color(0)); /* all pixels initially transparent */
             gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT);
             gl.glDisable(gl.GL_DEPTH_TEST);
-            Background.Draw
-              (
-                /*Projection =*/ Mat4f.identity(),
-                /*Left =*/ -1.0f,
-                /*Bottom =*/ -1.0f,
-                /*Right =*/ 1.0f,
-                /*Top =*/ 1.0f,
-                /*Depth =*/ 0.99f
-              );
+            if (BackgroundTexture == null && ImageBuf != null)
+              {
+                final android.graphics.Canvas g = BackgroundBits.Draw;
+                g.drawColor(0, android.graphics.PorterDuff.Mode.SRC);
+                  /* initialize all pixels to fully transparent */
+                g.drawBitmap
+                  (
+                    /*colors =*/ ImageBuf,
+                    /*offset =*/ 0,
+                    /*stride =*/ RotatedPreviewSize.x,
+                    /*x =*/ (Graphical.getWidth() - RotatedPreviewSize.x) / 2,
+                    /*y =*/ (Graphical.getHeight() - RotatedPreviewSize.y) / 2,
+                    /*width =*/ RotatedPreviewSize.x,
+                    /*height =*/ RotatedPreviewSize.y,
+                    /*hasAlpha =*/ true,
+                    /*paint =*/ null
+                  );
+                BackgroundBits.DrawChanged();
+              } /*if*/
+            if (BackgroundTexture != null || ImageBuf != null)
+              {
+                final float Left = -1.0f;
+                final float Bottom = -1.0f;
+                final float Right = 1.0f;
+                final float Top = 1.0f;
+                final float Depth = 0.99f;
+                final float Fudge = 0.09f; /* to leave off junk around edge of image */
+                BackgroundTex.Draw
+                  (
+                        Mat4f.map_cuboid
+                          (
+                            /*src_lo =*/ TextureMatrix.xform(new Vec3f(Fudge - 1.0f, Fudge - 1.0f, 0.0f)),
+                            /*src_hi =*/ TextureMatrix.xform(new Vec3f(1.0f - Fudge, 1.0f - Fudge, 1.0f)),
+                            /*dst_lo =*/ new Vec3f(Left, Bottom, Depth),
+                            /*dst_hi =*/ new Vec3f(Right, Top, Depth + 1.0f)
+                          )
+                    .mul(
+                        TextureMatrix
+                    )
+                  );
+              } /*if*/
             final Mat4f Orientation =
                 (
                     Mat4f.rotation(Mat4f.AXIS_Z, (1 - Rotation) * (float)Math.PI / 2.0f)
@@ -562,7 +695,9 @@ public class Main extends android.app.Activity
           {
           /* losing the GL context anyway, so don't bother releasing anything: */
             Needle = null;
-            Background = null;
+            BackgroundTexture = null;
+            BackgroundTex = null;
+            BackgroundBits = null;
             MainViewActive = false;
           } /*Release*/
 

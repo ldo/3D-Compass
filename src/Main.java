@@ -161,6 +161,7 @@ public class Main extends android.app.Activity
         private android.graphics.SurfaceTexture BackgroundTexture;
         private int[] ImageBuf;
         private int Rotation;
+        private int ViewWidth, ViewHeight;
         private Mat4f TextureMatrix, ProjectionMatrix;
 
         public CommonListener()
@@ -554,6 +555,8 @@ public class Main extends android.app.Activity
           )
           /* initial setup for drawing that doesn't need to be done for every frame. */
           {
+            this.ViewWidth = ViewWidth;
+            this.ViewHeight = ViewHeight;
             if (Needle != null)
               {
                 Needle.Unbind(true);
@@ -653,10 +656,16 @@ public class Main extends android.app.Activity
               } /*if*/
             if (BackgroundTexture != null || ImageBuf != null)
               {
-                final float Left = -1.0f;
-                final float Bottom = -1.0f;
-                final float Right = 1.0f;
-                final float Top = 1.0f;
+                final float WidthShrink = RotatedPreviewSize.x * 1.0f / ViewWidth;
+                final float HeightShrink = RotatedPreviewSize.y * 1.0f / ViewHeight;
+                final boolean FitHeight = /* true to fit height and shrink width, false to shrink height and fit width */
+                        WidthShrink
+                    <
+                        HeightShrink;
+                final float Left = FitHeight ? - WidthShrink : -1.0f;
+                final float Bottom = FitHeight ? -1.0f : - HeightShrink;
+                final float Right = FitHeight ? WidthShrink : 1.0f;
+                final float Top = FitHeight ? 1.0f : HeightShrink;
                 final float Depth = 0.99f;
                 final float Fudge = 0.09f; /* to leave off junk around edge of image */
                 BackgroundTex.Draw
@@ -675,13 +684,13 @@ public class Main extends android.app.Activity
               } /*if*/
             final Mat4f Orientation =
                 (
-                    Mat4f.rotation(Mat4f.AXIS_Z, (1 - Rotation) * (float)Math.PI / 2.0f)
+                    Mat4f.rotation(Mat4f.AXIS_Z, (1 - Rotation) * (float)Math.PI / 2.0f, false)
                 ).mul(
-                    Mat4f.rotation(Mat4f.AXIS_Y, Roll)
+                    Mat4f.rotation(Mat4f.AXIS_Y, Roll, false)
                 ).mul(
-                    Mat4f.rotation(Mat4f.AXIS_X, Elev)
+                    Mat4f.rotation(Mat4f.AXIS_X, Elev, false)
                 ).mul(
-                    Mat4f.rotation(Mat4f.AXIS_Z, Azi)
+                    Mat4f.rotation(Mat4f.AXIS_Z, Azi, false)
                 );
             gl.glEnable(gl.GL_DEPTH_TEST);
             Needle.Draw

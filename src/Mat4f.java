@@ -545,9 +545,11 @@ public class Mat4f
     public static Mat4f rotation
       (
         int axis, /* AXIS_X, AXIS_Y or AXIS_Z */
-        float radians
+        float angle,
+        boolean degrees /* false for radians */
       )
       {
+        final float radians = degrees ? (float)Math.toRadians(angle) : angle;
         final float cos = (float)Math.cos(radians);
         final float sin = (float)Math.sin(radians);
         Mat4f m;
@@ -591,18 +593,20 @@ public class Mat4f
     public static Mat4f rotation
       (
         int axis, /* AXIS_X, AXIS_Y or AXIS_Z */
-        float radians,
+        float angle,
+        boolean degrees /* false for radians */,
         Vec3f origin
       )
       {
         return
-            translation(origin).mul(rotation(axis, radians)).mul(translation(origin.neg()));
+            translation(origin).mul(rotation(axis, angle, degrees)).mul(translation(origin.neg()));
       } /*rotation*/
 
     public static Mat4f rotation
       (
         Vec3f axis, /* assumed unit vector */
-        float radians
+        float angle,
+        boolean degrees /* false for radians */
       )
       /* generates a rotation about an arbitrary axis passing through the origin. */
       {
@@ -615,22 +619,23 @@ public class Mat4f
           );
           /* rotate within x-z plane about y to align with x-axis */
         return
-                rotation(AXIS_Z, zangle)
+                rotation(AXIS_Z, zangle, false)
             .mul(
-                rotation(AXIS_Y, - yangle)
+                rotation(AXIS_Y, - yangle, false)
             ).mul(
-                rotation(AXIS_X, radians)
+                rotation(AXIS_X, angle, degrees)
             ).mul(
-                rotation(AXIS_Y, yangle)
+                rotation(AXIS_Y, yangle, false)
             ).mul(
-                rotation(AXIS_Z, - zangle)
+                rotation(AXIS_Z, - zangle, false)
             );
       } /*rotation*/
 
     public static Mat4f rotation
       (
         Vec3f axis,
-        float radians,
+        float angle,
+        boolean degrees /* false for radians */,
         Vec3f origin
       )
       /* generates a rotation about an arbitrary axis. */
@@ -638,7 +643,7 @@ public class Mat4f
         return
                 translation(origin)
             .mul(
-                rotation(axis.sub(origin), radians))
+                rotation(axis.sub(origin), angle, degrees))
             .mul(
                 translation(origin.neg())
             );
@@ -652,7 +657,7 @@ public class Mat4f
       /* generates a rotation matrix which, when applied to src, turns it into dst. */
       {
         return
-            rotation(src.cross(dst).unit(), (float)Math.acos(src.unit().dot(dst.unit())));
+            rotation(src.cross(dst).unit(), (float)Math.acos(src.unit().dot(dst.unit())), false);
       } /*rotate_align*/
 
     public static Mat4f frustum
@@ -718,6 +723,37 @@ public class Mat4f
             );
       } /*map_cuboid*/
 
+    public static Mat4f fit_cuboid
+      (
+        Vec3f src_lo,
+        Vec3f src_hi,
+        Vec3f dst_lo,
+        Vec3f dst_hi,
+        boolean outside
+      )
+      /* returns a matrix that does appropriate scaling and translation
+        to fit the axis-aligned cuboid defined by opposite corners src_lo
+        and src_hi to the middle of the one with opposite corners dst_lo
+        and dst_hi without distortion. If outside, then the minimum dimension
+        of the src cuboid will equal the maximum dimension of dst (src
+        fits outside dst); otherwise, the maximum dimension of src will
+        equal the minimum dimension of dst (src fits inside dst). */
+      {
+        final Vec3f scalev = (dst_hi.sub(dst_lo)).div(src_hi.sub(src_lo));
+        final float scale =
+            outside ?
+                (float)Math.max(Math.max(scalev.x, scalev.y), scalev.z)
+            :
+                (float)Math.min(Math.min(scalev.x, scalev.y), scalev.z);
+        return
+                translation((dst_lo.add(dst_hi)).div(2))
+            .mul(
+                scaling(scale, scale, scale)
+            ).mul(
+                translation((src_lo.add(src_hi)).div(2).neg())
+            );
+      } /*fit_cuboid*/
+
     public Vec3f xform
       (
         Vec3f v
@@ -778,5 +814,19 @@ public class Mat4f
         return
             result.toArray(new Vec3f[v.length]);
       } /*dxform*/
+
+    @Override
+    public String toString()
+      {
+        return
+            String.format /* should I worry about locale? */
+              (
+                "Mat4f[[%.3f, %.3f, %.3f, %.3f], [%.3f, %.3f, %.3f, %.3f], [%.3f, %.3f, %.3f, %.3f], [%.3f, %.3f, %.3f, %.3f]]",
+                m11, m12, m13, m14,
+                m21, m22, m23, m24,
+                m31, m32, m33, m34,
+                m41, m42, m43, m44
+              );
+      } /*toString*/
 
   } /*Mat4f*/

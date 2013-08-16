@@ -18,6 +18,7 @@ package nz.gen.geek_central.Compass3D;
 */
 
 import android.graphics.Matrix;
+import android.graphics.Point;
 import android.graphics.ImageFormat;
 import android.widget.Toast;
 import android.view.View;
@@ -131,9 +132,10 @@ public class Main extends android.app.Activity
     android.hardware.SensorManager SensorMan;
     android.hardware.Sensor CompassSensor = null;
     CommonListener Listen;
+    DisplayRenderer Render;
     int TheCameraID;
     final long[] FrameTimes = new long[25];
-    boolean Active = false, MainViewActive = false;
+    boolean Active = false, MainViewActive = false; /* shouldn't be any worries about race conditions accessing these... */
     int NextFrameTime = 0;
 
     private static java.util.Map<Integer, String> ImageFormats = new java.util.HashMap<Integer, String>();
@@ -150,28 +152,17 @@ public class Main extends android.app.Activity
     private class CommonListener
         implements
             android.hardware.SensorEventListener,
-            android.hardware.Camera.PreviewCallback,
-            MainView.Handler
+            android.hardware.Camera.PreviewCallback
       {
         private android.hardware.Camera TheCamera;
-        private android.graphics.Point PreviewSize, RotatedPreviewSize;
-        private Compass Needle;
-        private GLBitmapView BackgroundBits;
-        private GLTextureView BackgroundTex;
-        private android.graphics.SurfaceTexture BackgroundTexture;
-        private int[] ImageBuf;
-        private int Rotation;
-        private int ViewWidth, ViewHeight;
-        private Mat4f TextureMatrix, ProjectionMatrix;
 
         public CommonListener()
           {
-            TextureMatrix = Mat4f.identity(); /* default */
+          /* nothing to do, really */
           } /*CommonListener*/
 
         public void Start()
           {
-            Rotation = (5 - Main.this.getWindowManager().getDefaultDisplay().getOrientation()) % 4;
             StartCompass();
             if (MainViewActive)
               {
@@ -224,7 +215,7 @@ public class Main extends android.app.Activity
               {
                 Out.print(" ");
                 boolean First = true;
-                for (Object Val : TheList)
+                for (EltType Val : TheList)
                   {
                     if (!First)
                       {
@@ -267,7 +258,6 @@ public class Main extends android.app.Activity
                     Main.this.getWindowManager().getDefaultDisplay().getOrientation(),
                     TheCameraID
                   ); /* debug */
-                if (false) /* debug */
                 try
                   {
                     final int RightOrientation = CameraUseful.RightOrientation(Main.this, TheCameraID);
@@ -298,7 +288,6 @@ public class Main extends android.app.Activity
                         /*duration =*/ Toast.LENGTH_SHORT
                       ).show();
                   } /*try*/
-                PreviewSize = CameraUseful.GetLargestPreviewSizeAtMost(TheCamera, Graphical.getWidth(), Graphical.getHeight());
                 final android.hardware.Camera.Parameters Parms = TheCamera.getParameters();
                   { /* debug */
                     System.err.println("Main.StartCamera initial params:");
@@ -360,41 +349,53 @@ public class Main extends android.app.Activity
                         System.err
                       );
                   }
+                final Point PreviewSize = CameraUseful.GetLargestPreviewSizeAtMost(TheCamera, Graphical.getWidth(), Graphical.getHeight());
                 Parms.setPreviewSize(PreviewSize.x, PreviewSize.y);
                 TheCamera.setParameters(Parms);
-                RotatedPreviewSize = new android.graphics.Point
-                  (
-                    (Rotation & 1) != 0 ? PreviewSize.y : PreviewSize.x,
-                    (Rotation & 1) != 0 ? PreviewSize.x : PreviewSize.y
-                  );
-                System.err.printf("Set preview size to %d*%d, rotated %d*%d (at most %d*%d), HasPreviewTextures = %s\n", PreviewSize.x, PreviewSize.y, RotatedPreviewSize.x, RotatedPreviewSize.y, Graphical.getWidth(), Graphical.getHeight(), HasPreviewTextures); /* debug */
                 TheCamera.setPreviewCallback(this);
-                if (HasPreviewTextures)
-                  {
-                    if (BackgroundTexture == null)
+                Graphical.Render.Synchronize
+                  (
+                    new Runnable()
                       {
-                        System.err.printf("3DCompass BackgroundTex texture ID = %d\n", BackgroundTex.GetTextureID()); /* debug */
-                        BackgroundTexture = new android.graphics.SurfaceTexture(BackgroundTex.GetTextureID());
-                        BackgroundTexture.setOnFrameAvailableListener /* debug */
-                          (
-                            new android.graphics.SurfaceTexture.OnFrameAvailableListener()
+                        public void run()
+                          {
+                            if (false)/*debug*/ Render.Rotation = (5 - Main.this.getWindowManager().getDefaultDisplay().getOrientation()) % 4;
+                            Render.PreviewSize = PreviewSize;
+                            Render.RotatedPreviewSize = new Point
+                              (
+                                (Render.Rotation & 1) != 0 ? PreviewSize.y : PreviewSize.x,
+                                (Render.Rotation & 1) != 0 ? PreviewSize.x : PreviewSize.y
+                              );
+                            System.err.printf("Set preview size to %d*%d, rotated %d*%d (at most %d*%d), HasPreviewTextures = %s, HasSurfaceTextureRelease = %s\n", PreviewSize.x, PreviewSize.y, Render.RotatedPreviewSize.x, Render.RotatedPreviewSize.y, Graphical.getWidth(), Graphical.getHeight(), HasPreviewTextures, HasSurfaceTextureRelease); /* debug */
+                            if (HasPreviewTextures)
                               {
-                                public void onFrameAvailable
-                                  (
-                                    android.graphics.SurfaceTexture TheTexture
-                                  )
+                                if (Render.BackgroundTexture == null)
                                   {
-                                    System.err.println("3DCompass.Main SurfaceTexture frame available");
-                                  } /*onFrameAvailable*/
-                              } /*SurfaceTexture.OnFrameAvailableListener*/
-                          );
-                      } /*if*/
-                    SetCameraPreviewTexture(TheCamera, BackgroundTexture);
-                  }
-                else
-                  {
-                    ImageBuf = new int[PreviewSize.x * PreviewSize.y];
-                  } /*if*/
+                                    System.err.printf("3DCompass BackgroundTex texture ID = %d\n", Render.BackgroundTex.GetTextureID()); /* debug */
+                                    Render.BackgroundTexture = new android.graphics.SurfaceTexture(Render.BackgroundTex.GetTextureID());
+                                    if (false) Render.BackgroundTexture.setOnFrameAvailableListener /* debug */
+                                      (
+                                        new android.graphics.SurfaceTexture.OnFrameAvailableListener()
+                                          {
+                                            public void onFrameAvailable
+                                              (
+                                                android.graphics.SurfaceTexture TheTexture
+                                              )
+                                              {
+                                                System.err.println("3DCompass.Main SurfaceTexture frame available");
+                                              } /*onFrameAvailable*/
+                                          } /*SurfaceTexture.OnFrameAvailableListener*/
+                                      );
+                                  } /*if*/
+                                SetCameraPreviewTexture(TheCamera, Render.BackgroundTexture);
+                              }
+                            else
+                              {
+                                Render.ImageBuf = new int[PreviewSize.x * PreviewSize.y];
+                              } /*if*/
+                          } /*run*/
+                      } /*Runnable*/
+                  );
                 TheCamera.startPreview();
               }
             else
@@ -408,27 +409,25 @@ public class Main extends android.app.Activity
             if (TheCamera != null)
               {
                 TheCamera.stopPreview();
-                if (BackgroundTexture != null)
-                  {
-                    SetCameraPreviewTexture(TheCamera, null);
-                  } /*if*/
+                Graphical.Render.Synchronize
+                  (
+                    new Runnable()
+                      {
+                        public void run()
+                          {
+                            if (Render.BackgroundTexture != null)
+                              {
+                                SetCameraPreviewTexture(TheCamera, null);
+                              } /*if*/
+                            Render.ImageBuf = null;
+                          } /*run*/
+                      } /*Runnable*/
+                  );
                 TheCamera.setPreviewCallback(null);
                 TheCamera.release();
                 TheCamera = null;
-                ImageBuf = null;
               } /*if*/
           } /*StopCamera*/
-
-        private float
-            Azi,
-              /* always Earth-horizontal, regardless of orientation of phone */
-            Elev,
-              /* always around X-axis of phone, +ve is top-down, -ve is top-up */
-            Roll;
-              /* always around Y-axis of phone, +ve is anticlockwise
-                viewed from bottom, -ve is clockwise, until it reaches
-                ±90° when it its starts decreasing in magnitude again, so
-                0° is when phone is horizontal either face-up or face-down */
 
       /* SensorEventListener methods: */
 
@@ -445,7 +444,7 @@ public class Main extends android.app.Activity
 
         public void onSensorChanged
           (
-            android.hardware.SensorEvent Event
+            final android.hardware.SensorEvent Event
           )
           {
             final java.io.ByteArrayOutputStream MessageBuf = new java.io.ByteArrayOutputStream();
@@ -468,9 +467,18 @@ public class Main extends android.app.Activity
             Msg.print(")\n");
             Msg.flush();
             Message1View.setText(MessageBuf.toString());
-            Azi = (float)Math.toRadians(Event.values[0]);
-            Elev = (float)Math.toRadians(Event.values[1]);
-            Roll = (float)Math.toRadians(Event.values[2]);
+            Graphical.queueEvent /* use of Render.Synchronize here can cause deadlock! */
+              (
+                new Runnable()
+                  {
+                    public void run()
+                      {
+                        Render.Azi = (float)Math.toRadians(Event.values[0]);
+                        Render.Elev = (float)Math.toRadians(Event.values[1]);
+                        Render.Roll = (float)Math.toRadians(Event.values[2]);
+                      } /*run*/
+                  } /*Runnable*/
+              );
             final long Now = System.currentTimeMillis();
             if (Now - LastSensorUpdate >= 250)
               /* throttle sensor updates because they seem to cause contention
@@ -485,7 +493,7 @@ public class Main extends android.app.Activity
 
         public void onPreviewFrame
           (
-            byte[] Data,
+            final byte[] Data,
             android.hardware.Camera TheCamera
           )
           {
@@ -503,50 +511,69 @@ public class Main extends android.app.Activity
               {
                 Message2View.setText(String.format("Camera fps %.2f", FrameRate));
               } /*if*/
-            if (BackgroundTexture != null) /* TBD race condition with GL thread setting to null! */
-              {
-                Graphical.Render.Synchronize
-                  (
-                    new Runnable()
+            Graphical.queueEvent
+              (
+                new Runnable()
+                  {
+                    public void run()
                       {
-                        public void run()
+                        if (Render.BackgroundTexture != null)
                           {
-                            BackgroundTexture.updateTexImage();
-                          } /*run*/
-                      } /*Runnable*/
-                  );
-                final float[] m = new float[16];
-                BackgroundTexture.getTransformMatrix(m);
-                TextureMatrix = new Mat4f(m);
-                  { /* debug */
-                    System.err.print("3DCompass TextureMatrix = [");
-                    for (int i = 0; i < 16; ++i)
-                      {
-                        if (i != 0)
+                            Render.BackgroundTexture.updateTexImage();
+                            final float[] m = new float[16];
+                            Render.BackgroundTexture.getTransformMatrix(m);
+                            Render.TextureMatrix = new Mat4f(m);
+                          }
+                        else if (Render.ImageBuf != null) /* can still get preview frames during rotate? */
                           {
-                            System.err.print(",");
+                            CameraUseful.DecodeNV21
+                              (
+                                /*SrcWidth =*/ Render.PreviewSize.x,
+                                /*SrcHeight =*/ Render.PreviewSize.y,
+                                /*Data =*/ Data,
+                                /*Rotate =*/ CameraUseful.CanTellCameraPresent() ? 0 : Render.Rotation,
+                                /*Alpha =*/ 255,
+                                /*Pixels =*/ Render.ImageBuf
+                              );
                           } /*if*/
-                        System.err.printf("%.3f", m[i]);
-                      } /*for*/
-                    System.err.println("]");
-                  } /* debug */
-              }
-            else if (ImageBuf != null) /* can still get preview frames during rotate? */
-              {
-                CameraUseful.DecodeNV21
-                  (
-                    /*SrcWidth =*/ PreviewSize.x,
-                    /*SrcHeight =*/ PreviewSize.y,
-                    /*Data =*/ Data,
-                    /*Rotate =*/ CameraUseful.CanTellCameraPresent() ? 0 : Rotation,
-                    /*Alpha =*/ 255,
-                    /*Pixels =*/ ImageBuf
-                  );
-              } /*if*/
-            Graphical.requestRender();
+                        Graphical.requestRender();
+                      } /*run*/
+                  } /*Runnable*/
+              );
           } /*onPreviewFrame*/
 
-      /* MainView.Handler methods: */
+      } /*CommonListener*/;
+
+    private class DisplayRenderer implements MainView.Handler
+      /* separate this out from CommonListener because these calls need to
+        happen on a separate thread */
+      {
+        private Point PreviewSize, RotatedPreviewSize;
+        private int[] ImageBuf;
+        private int Rotation;
+
+        private Compass Needle;
+        private GLBitmapView BackgroundBits;
+        private GLTextureView BackgroundTex;
+        private android.graphics.SurfaceTexture BackgroundTexture;
+        private int ViewWidth, ViewHeight;
+        private Mat4f TextureMatrix, ProjectionMatrix;
+
+        private float
+            Azi,
+              /* always Earth-horizontal, regardless of orientation of phone */
+            Elev,
+              /* always around X-axis of phone, +ve is top-down, -ve is top-up */
+            Roll;
+              /* always around Y-axis of phone, +ve is anticlockwise
+                viewed from bottom, -ve is clockwise, until it reaches
+                ±90° when it its starts decreasing in magnitude again, so
+                0° is when phone is horizontal either face-up or face-down */
+
+        public DisplayRenderer()
+          {
+            TextureMatrix = Mat4f.identity(); /* default for non-SurfaceTexture case */
+          } /*DisplayRenderer*/
 
         public void Setup
           (
@@ -562,34 +589,26 @@ public class Main extends android.app.Activity
                 Needle.Unbind(true);
                 Needle = null;
               } /*if*/
-            if (BackgroundTex != null) /* force re-creation to match view dimensions */
+            if (BackgroundBits != null) /* force re-creation to match view dimensions */
               {
-                if (BackgroundTexture != null)
-                  {
-                    if (TheCamera != null)
-                      {
-                        SetCameraPreviewTexture(TheCamera, null);
-                      } /*if*/
-                    if (HasSurfaceTextureRelease)
-                      {
-                        BackgroundTexture.release();
-                      } /*if*/
-                    BackgroundTexture = null;
-                  } /*if*/
-                BackgroundTex.Unbind(true);
+              /* assert BackgroundTexture is null, so no need to detach preview texture from camera */
+                BackgroundBits.Unbind(true);
                 BackgroundTex = null;
                 BackgroundBits = null;
               } /*if*/
             Needle = new Compass(true);
             if (HasPreviewTextures)
               {
-                BackgroundTex = new GLTextureView
-                  (
-                    /*CustomFragShading =*/ null,
-                    /*InvertY =*/ false,
-                    /*IsSurfaceTexture =*/ true,
-                    /*BindNow =*/ true
-                  );
+                if (BackgroundTex == null)
+                  {
+                    BackgroundTex = new GLTextureView
+                      (
+                        /*CustomFragShading =*/ null,
+                        /*InvertY =*/ false,
+                        /*IsSurfaceTexture =*/ true,
+                        /*BindNow =*/ true
+                      );
+                  } /*if*/
               }
             else
               {
@@ -613,20 +632,20 @@ public class Main extends android.app.Activity
                     Mat4f.translation(new Vec3f(0.0f, 0.0f, -1.6f))
                 );
             MainViewActive = true;
-            if (Active)
-              {
-                runOnUiThread
-                  (
-                    new Runnable()
+            runOnUiThread
+              (
+                new Runnable()
+                  {
+                    public void run()
                       {
-                        public void run()
+                        if (Active)
                           {
-                            StopCamera();
-                            StartCamera();
-                          } /*run*/
-                      } /*Runnable*/
-                  );
-              } /*if*/
+                            Listen.StopCamera();
+                            Listen.StartCamera();
+                          } /*if*/
+                      } /*run*/
+                  } /*Runnable*/
+              );
           } /*Setup*/
 
         public void Draw()
@@ -658,15 +677,13 @@ public class Main extends android.app.Activity
               {
                 final float WidthShrink = RotatedPreviewSize.x * 1.0f / ViewWidth;
                 final float HeightShrink = RotatedPreviewSize.y * 1.0f / ViewHeight;
-                final boolean FitHeight = /* true to fit height and shrink width, false to shrink height and fit width */
-                        WidthShrink
-                    <
-                        HeightShrink;
+                final boolean FitHeight = WidthShrink < HeightShrink;
+                  /* true to fit height and shrink width, false to shrink height and fit width */
                 final float Left = FitHeight ? - WidthShrink : -1.0f;
                 final float Bottom = FitHeight ? -1.0f : - HeightShrink;
                 final float Right = FitHeight ? WidthShrink : 1.0f;
                 final float Top = FitHeight ? 1.0f : HeightShrink;
-                final float Depth = 0.99f;
+                final float Depth = 0.99f; /* image can disappear on some systems if this is exactly 1.0 */
                 final float Fudge = 0.09f; /* to leave off junk around edge of image */
                 BackgroundTex.Draw
                   (
@@ -682,35 +699,47 @@ public class Main extends android.app.Activity
                     )
                   );
               } /*if*/
-            final Mat4f Orientation =
-                (
-                    Mat4f.rotation(Mat4f.AXIS_Z, (1 - Rotation) * (float)Math.PI / 2.0f, false)
-                ).mul(
-                    Mat4f.rotation(Mat4f.AXIS_Y, Roll, false)
-                ).mul(
-                    Mat4f.rotation(Mat4f.AXIS_X, Elev, false)
-                ).mul(
-                    Mat4f.rotation(Mat4f.AXIS_Z, Azi, false)
-                );
-            gl.glEnable(gl.GL_DEPTH_TEST);
-            Needle.Draw
-              (
-                /*ProjectionMatrix =*/ ProjectionMatrix,
-                /*ModelViewMatrix =*/ Orientation
-              );
+            if (Needle != null)
+              {
+                final Mat4f Orientation =
+                    (
+                        Mat4f.rotation(Mat4f.AXIS_Z, (1 - Rotation) * (float)Math.PI / 2.0f, false)
+                    ).mul(
+                        Mat4f.rotation(Mat4f.AXIS_Y, Roll, false)
+                    ).mul(
+                        Mat4f.rotation(Mat4f.AXIS_X, Elev, false)
+                    ).mul(
+                        Mat4f.rotation(Mat4f.AXIS_Z, Azi, false)
+                    );
+                gl.glEnable(gl.GL_DEPTH_TEST);
+                Needle.Draw
+                  (
+                    /*ProjectionMatrix =*/ ProjectionMatrix,
+                    /*ModelViewMatrix =*/ Orientation
+                  );
+              } /*if*/
           } /*Draw*/
 
         public void Release()
           {
-          /* losing the GL context anyway, so don't bother releasing anything: */
-            Needle = null;
-            BackgroundTexture = null;
-            BackgroundTex = null;
-            BackgroundBits = null;
-            MainViewActive = false;
+            Graphical.queueEvent
+              (
+                new Runnable()
+                  {
+                    public void run()
+                      {
+                      /* losing the GL context anyway, so don't bother releasing anything: */
+                        Needle = null;
+                        BackgroundTexture = null;
+                        BackgroundTex = null;
+                        BackgroundBits = null;
+                        MainViewActive = false;
+                      } /*run*/
+                  } /*Runnable*/
+              );
           } /*Release*/
 
-      } /*CommonListener*/;
+      } /*DisplayRenderer*/;
 
     void BuildActivityResultActions()
       {
@@ -799,7 +828,8 @@ public class Main extends android.app.Activity
             System.err.println("3DCompass.Main: cannot tell what cameras are present");
           } /*if*/ /* end debug */
         Listen = new CommonListener();
-        Graphical.SetHandler(Listen);
+        Render = new DisplayRenderer();
+        Graphical.SetHandler(Render);
       } /*onCreate*/
 
     @Override
@@ -815,6 +845,7 @@ public class Main extends android.app.Activity
     public void onDestroy()
       {
         Listen.Finish();
+      /* Render.Release(); */ /* should already have happened */
         super.onDestroy();
       } /*onDestroy*/
 
@@ -822,6 +853,7 @@ public class Main extends android.app.Activity
     public void onPause()
       {
         Listen.Stop();
+        Render.Release();
         Active = false;
         super.onPause();
       } /*onPause*/

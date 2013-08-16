@@ -42,7 +42,7 @@ public class GLBitmapView extends GLTextureView
           /* true to do GL calls now, false to defer to later call to Bind or Draw */
       )
       {
-        super(CustomFragShading, true, false, false);
+        super(CustomFragShading, false, true, false, false);
         this.BitsWidth = BitsWidth;
         this.BitsHeight = BitsHeight;
         if (BindNow)

@@ -253,7 +253,7 @@ public class CameraUseful
                         *
                             (FrontFacing ? 1 : -1)
                     +
-                        360
+                        360 /* ensure non-negative for correct modulus */
                     )
                 %
                     360;

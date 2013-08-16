@@ -35,6 +35,7 @@ public class GLTextureView
           /* optional replacement for fragment shader calculation,
             defaults to "gl_FragColor = texture2D(view_image, image_coord);"
             if omitted */
+        boolean InvertX,
         boolean InvertY,
           /* true if Y-coordinate of texture increases downwards (Canvas convention),
             false if it increases upwards (usual OpenGL convention) */
@@ -53,12 +54,11 @@ public class GLTextureView
             "void main()\n" +
             "  {\n" +
             "    gl_Position = mapping * vec4(2.0 * vertex_position.x - 1.0, 2.0 * vertex_position.y - 1.0, 0.0, 1.0);\n" +
-            "    image_coord = vec2(vertex_position.x, "
+            "    image_coord = vec2("
           );
-        VS.append
-          (
-            InvertY ? "1.0 - " : ""
-          );
+        VS.append(InvertX ? "1.0 - " : "");
+        VS.append("vertex_position.x, ");
+        VS.append(InvertY ? "1.0 - " : "");
         VS.append
           (
             "vertex_position.y);\n" +

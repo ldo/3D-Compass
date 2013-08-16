@@ -22,6 +22,7 @@ import android.graphics.Point;
 import android.graphics.ImageFormat;
 import android.widget.Toast;
 import android.view.View;
+import android.hardware.Camera;
 import nz.gen.geek_central.GLUseful.Mat4f;
 import nz.gen.geek_central.GLUseful.Vec3f;
 import nz.gen.geek_central.GLUseful.GLUseful;
@@ -97,7 +98,7 @@ public class Main extends android.app.Activity
 
     private static void SetCameraPreviewTexture
       (
-        android.hardware.Camera TheCamera,
+        Camera TheCamera,
         android.graphics.SurfaceTexture TheTexture
       )
       {
@@ -152,9 +153,9 @@ public class Main extends android.app.Activity
     private class CommonListener
         implements
             android.hardware.SensorEventListener,
-            android.hardware.Camera.PreviewCallback
+            Camera.PreviewCallback
       {
-        private android.hardware.Camera TheCamera;
+        private Camera TheCamera;
 
         public CommonListener()
           {
@@ -258,37 +259,39 @@ public class Main extends android.app.Activity
                     Main.this.getWindowManager().getDefaultDisplay().getOrientation(),
                     TheCameraID
                   ); /* debug */
-                try
+                if (false) /* only needed for portrait-mode applications */
                   {
-                    final int RightOrientation = CameraUseful.RightOrientation(Main.this, TheCameraID);
-                    if (false) /* debug */ TheCamera.setDisplayOrientation(RightOrientation);
-                    Toast.makeText /* debug */
-                      (
-                        /*context =*/ Main.this,
-                        /*text =*/
-                            String.format
-                              (
-                                "Set camera orientation to %d°",
-                                RightOrientation
-                              ),
-                        /*duration =*/ Toast.LENGTH_SHORT
-                      ).show();
-                  }
-                catch (RuntimeException Failed)
-                  {
-                    Toast.makeText
-                      (
-                        /*context =*/ Main.this,
-                        /*text =*/
-                            String.format
-                              (
-                                getString(R.string.set_orientation_failed),
-                                CameraUseful.RightOrientation(Main.this, TheCameraID)
-                              ),
-                        /*duration =*/ Toast.LENGTH_SHORT
-                      ).show();
-                  } /*try*/
-                final android.hardware.Camera.Parameters Parms = TheCamera.getParameters();
+                    try
+                      {
+                        final int RightOrientation = CameraUseful.RightOrientation(Main.this, TheCameraID);
+                        Toast.makeText /* debug */
+                          (
+                            /*context =*/ Main.this,
+                            /*text =*/
+                                String.format
+                                  (
+                                    "Set camera orientation to %d°",
+                                    RightOrientation
+                                  ),
+                            /*duration =*/ Toast.LENGTH_SHORT
+                          ).show();
+                      }
+                    catch (RuntimeException Failed)
+                      {
+                        Toast.makeText
+                          (
+                            /*context =*/ Main.this,
+                            /*text =*/
+                                String.format
+                                  (
+                                    getString(R.string.set_orientation_failed),
+                                    CameraUseful.RightOrientation(Main.this, TheCameraID)
+                                  ),
+                            /*duration =*/ Toast.LENGTH_SHORT
+                          ).show();
+                      } /*try*/
+                  } /*if*/
+                final Camera.Parameters Parms = TheCamera.getParameters();
                   { /* debug */
                     System.err.println("Main.StartCamera initial params:");
                     System.err.printf
@@ -359,7 +362,9 @@ public class Main extends android.app.Activity
                       {
                         public void run()
                           {
-                            Render.Rotation = (5 - Main.this.getWindowManager().getDefaultDisplay().getOrientation()) % 4;
+                            Render.Rotation = (5 - Main.this.getWindowManager().getDefaultDisplay().getRotation()) % 4;
+                            final Camera.CameraInfo TheInfo = CameraUseful.GetCameraInfo(TheCameraID);
+                            Render.FrontFacing = TheInfo != null && TheInfo.facing == Camera.CameraInfo.CAMERA_FACING_FRONT;
                             Render.PreviewSize = PreviewSize;
                             Render.RotatedPreviewSize = new Point
                               (
@@ -494,7 +499,7 @@ public class Main extends android.app.Activity
         public void onPreviewFrame
           (
             final byte[] Data,
-            android.hardware.Camera TheCamera
+            Camera TheCamera
           )
           {
             FrameTimes[NextFrameTime] = System.currentTimeMillis();
@@ -551,6 +556,7 @@ public class Main extends android.app.Activity
         private Point PreviewSize, RotatedPreviewSize;
         private int[] ImageBuf;
         private int Rotation;
+        private boolean FrontFacing;
 
         private Compass Needle;
         private GLBitmapView BackgroundBits;
@@ -604,7 +610,8 @@ public class Main extends android.app.Activity
                     BackgroundTex = new GLTextureView
                       (
                         /*CustomFragShading =*/ null,
-                        /*InvertY =*/ false,
+                        /*InvertX =*/ FrontFacing,
+                        /*InvertY =*/ true,
                         /*IsSurfaceTexture =*/ true,
                         /*BindNow =*/ true
                       );
@@ -687,6 +694,9 @@ public class Main extends android.app.Activity
                 final float Fudge = 0.09f; /* to leave off junk around edge of image */
                 BackgroundTex.Draw
                   (
+                    (
+                        Mat4f.rotation(Mat4f.AXIS_Z, - Rotation * 90, true)
+                    ).mul(
                         Mat4f.map_cuboid
                           (
                             /*src_lo =*/ TextureMatrix.xform(new Vec3f(Fudge - 1.0f, Fudge - 1.0f, 0.0f)),
@@ -694,7 +704,7 @@ public class Main extends android.app.Activity
                             /*dst_lo =*/ new Vec3f(Left, Bottom, Depth),
                             /*dst_hi =*/ new Vec3f(Right, Top, Depth + 1.0f)
                           )
-                    .mul(
+                    ).mul(
                         TextureMatrix
                     )
                   );

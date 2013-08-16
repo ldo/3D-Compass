@@ -730,6 +730,10 @@ public class Main extends android.app.Activity
                       {
                       /* losing the GL context anyway, so don't bother releasing anything: */
                         Needle = null;
+                        if (BackgroundTexture != null && HasSurfaceTextureRelease)
+                          {
+                            BackgroundTexture.release();
+                          } /*if*/
                         BackgroundTexture = null;
                         BackgroundTex = null;
                         BackgroundBits = null;

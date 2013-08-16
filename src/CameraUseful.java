@@ -243,14 +243,6 @@ public class CameraUseful
           {
             final Camera.CameraInfo Info = GetCameraInfo(CameraID);
             final boolean FrontFacing = Info.facing == Camera.CameraInfo.CAMERA_FACING_FRONT;
-            System.err.printf
-              (
-                "CameraUseful.RightOrientation camera %d frontfacing %s orientation %d° display rotation %d\n",
-                CameraID,
-                FrontFacing,
-                Info.orientation,
-                DisplayActivity.getWindowManager().getDefaultDisplay().getRotation()
-              ); /* debug */
             final int Degrees =
                     (
                         Info.orientation

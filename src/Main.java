@@ -261,7 +261,7 @@ public class Main extends android.app.Activity
                 try
                   {
                     final int RightOrientation = CameraUseful.RightOrientation(Main.this, TheCameraID);
-                    TheCamera.setDisplayOrientation(RightOrientation);
+                    if (false) /* debug */ TheCamera.setDisplayOrientation(RightOrientation);
                     Toast.makeText /* debug */
                       (
                         /*context =*/ Main.this,
@@ -359,7 +359,7 @@ public class Main extends android.app.Activity
                       {
                         public void run()
                           {
-                            if (false)/*debug*/ Render.Rotation = (5 - Main.this.getWindowManager().getDefaultDisplay().getOrientation()) % 4;
+                            Render.Rotation = (5 - Main.this.getWindowManager().getDefaultDisplay().getOrientation()) % 4;
                             Render.PreviewSize = PreviewSize;
                             Render.RotatedPreviewSize = new Point
                               (

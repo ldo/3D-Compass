@@ -486,7 +486,7 @@ public class Mat4f
         return
             new Mat4f
               (
-                1.0f, 0.0f, 0.0f, dz,
+                1.0f, 0.0f, 0.0f, dx,
                 0.0f, 1.0f, 0.0f, dy,
                 0.0f, 0.0f, 1.0f, dz,
                 0.0f, 0.0f, 0.0f, 1.0f

@@ -190,7 +190,7 @@ public class Lathe
                 break;
             ++i;
           } /*for*/
-        return 
+        return
             Geom.MakeObj(Uniforms, VertexColorCalc, BindNow);
       } /*Make*/
 

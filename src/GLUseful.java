@@ -519,7 +519,7 @@ public class GLUseful
           } /*Program*/
 
         public void Bind()
-          /* actually allocates GL resources, if not already done so. */ 
+          /* actually allocates GL resources, if not already done so. */
           {
             if (id == 0)
               {

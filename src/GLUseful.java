@@ -33,6 +33,9 @@ public class GLUseful
         System.loadLibrary("gl_useful");
       } /*static*/
 
+    public static final int GL_TEXTURE_EXTERNAL_OES = 0x8D65;
+      /* missing from android.opengl.GLES11Ext in API levels 11 .. 14 */
+
 /*
     Error checking
 */

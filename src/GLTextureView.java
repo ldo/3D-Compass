@@ -95,7 +95,7 @@ public class GLTextureView
                 "  }/*main*/\n",
             BindNow
           );
-        TextureTarget = IsSurfaceTexture ? android.opengl.GLES11Ext.GL_TEXTURE_EXTERNAL_OES : gl.GL_TEXTURE_2D;
+        TextureTarget = IsSurfaceTexture ? GLUseful.GL_TEXTURE_EXTERNAL_OES : gl.GL_TEXTURE_2D;
         Bound = false;
           {
             final java.util.ArrayList<GLUseful.Vec2f> Temp = new java.util.ArrayList<GLUseful.Vec2f>();

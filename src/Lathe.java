@@ -86,6 +86,7 @@ public class Lathe
           (
             /*Shaded =*/ Shaded,
             /*GotNormals =*/ Normal != null,
+            /*AutoNormals =*/ Shaded && Normal == null,
             /*GotTexCoords =*/ TexCoord != null,
             /*GotColors =*/ VertexColor != null
           );

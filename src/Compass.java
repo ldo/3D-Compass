@@ -103,7 +103,7 @@ public class Compass
                       )
                       {
                         final float FaceAngle =
-                            (float)(2.0 * Math.PI * SectorIndex / NrSectors);
+                            Vec3f.circle * SectorIndex / NrSectors;
                         final Vec3f OrigNormal =
                             Normals[PointIndex - (Upper ? 0 : 1)];
                         return

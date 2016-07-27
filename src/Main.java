@@ -695,7 +695,7 @@ public class Main extends android.app.Activity
                 BackgroundTex.Draw
                   (
                     (
-                        Mat4f.rotation(Mat4f.AXIS_Z, - Rotation * 90, true)
+                        Mat4f.rotation(Mat4f.AXIS_Z, - Rotation * 90 * Vec3f.deg)
                     ).mul(
                         Mat4f.map_cuboid
                           (
@@ -713,13 +713,13 @@ public class Main extends android.app.Activity
               {
                 final Mat4f Orientation =
                     (
-                        Mat4f.rotation(Mat4f.AXIS_Z, (1 - Rotation) * (float)Math.PI / 2.0f, false)
+                        Mat4f.rotation(Mat4f.AXIS_Z, (1 - Rotation) * 90.0f * Vec3f.deg)
                     ).mul(
-                        Mat4f.rotation(Mat4f.AXIS_Y, Roll, false)
+                        Mat4f.rotation(Mat4f.AXIS_Y, Roll)
                     ).mul(
-                        Mat4f.rotation(Mat4f.AXIS_X, Elev, false)
+                        Mat4f.rotation(Mat4f.AXIS_X, Elev)
                     ).mul(
-                        Mat4f.rotation(Mat4f.AXIS_Z, Azi, false)
+                        Mat4f.rotation(Mat4f.AXIS_Z, Azi)
                     );
                 gl.glEnable(gl.GL_DEPTH_TEST);
                 Needle.Draw

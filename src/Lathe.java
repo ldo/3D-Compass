@@ -18,6 +18,8 @@ package nz.gen.geek_central.GLUseful;
     the License.
 */
 
+import nz.gen.geek_central.GLUseful.Vec3f;
+
 public class Lathe
   {
     public interface VertexFunc
@@ -94,7 +96,7 @@ public class Lathe
           {
             if (i < NrSectors)
               {
-                final float Angle = (float)(2.0 * Math.PI * i / NrSectors);
+                final float Angle = Vec3f.circle * i / NrSectors;
                 final float Cos = (float)Math.cos(Angle);
                 final float Sin = (float)Math.sin(Angle);
                 for (int j = 0; j < NrPoints; ++j)

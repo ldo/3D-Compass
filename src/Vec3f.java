@@ -1,8 +1,8 @@
 package nz.gen.geek_central.GLUseful;
 /*
-    functional 3D vector operations
+    Functional 3D vector operations. All angles are in radians.
 
-    Copyright 2011, 2013 by Lawrence D'Oliveiro <ldo@geek-central.gen.nz>.
+    Copyright 2011-2016 by Lawrence D'Oliveiro <ldo@geek-central.gen.nz>.
 
     Licensed under the Apache License, Version 2.0 (the "License"); you may not
     use this file except in compliance with the License. You may obtain a copy of
@@ -21,6 +21,14 @@ public class Vec3f
   /* 3D vectors */
   {
     public final float x, y, z, w;
+
+    public static final float PI = (float)Math.PI;
+    public static final float deg = PI / 180;
+      /* multiply degrees by this to convert to radians,
+        divide radians by this to convert to degrees */
+    public static final float circle = 2 * (float)Math.PI;
+      /* multiply fractions of a circle by this to convert to radians,
+        divide radians by this to convert to fractions of a circle */
 
     public Vec3f
       (
@@ -197,7 +205,7 @@ public class Vec3f
         /* returns the angle between the x-y plane and the line from the origin to the point. */
       {
         return
-            (float)Math.atan2(z, (float)Math.hypot(x, y));
+            (float)Math.atan2(z, Math.hypot(x, y));
       } /*elevation*/
 
     public float abs()
